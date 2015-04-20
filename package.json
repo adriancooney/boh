@@ -1,0 +1,25 @@
+{
+  "name": "boh",
+  "version": "0.0.0",
+  "description": "The simple build system.",
+  "main": "src/boh.js",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "boh",
+    "build"
+  ],
+  "author": "Adrian Cooney <cooney.adrian@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^0.9.0",
+    "commander": "^2.8.0",
+    "lodash.defaults": "^3.1.1",
+    "micromatch": "^2.1.6"
+  }
+}
