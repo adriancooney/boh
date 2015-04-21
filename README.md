@@ -63,3 +63,20 @@ var User = require("./User.js");
 
 ...
 ```
+
+### Plugins
+You can develop your own plugins for `boh`. To use them, you simply publish it to `npm` with the prefix `boh-`, install it and `boh` will do the rest from there. It will automatically require any plugins installed and execute them accordingly.
+
+#### Plugin API
+The following functions make up the simple `boh` plugin API. [`colors`](https://www.npmjs.com/package/colors) work too.
+##### `<plugin>.emit( event, [data...])`
+Emit a plugin event.
+
+##### `<plugin>.debug( ... )`
+Write a message to the debug log via [`debug`](https://github.com/visionmedia/debug) ("boh:plugin:<plugin name>").
+
+##### `<plugin>.log( ... )`
+Write a message to the stdout.
+
+##### `boh.execute( cwd, script, callback )`
+Execute a script the boh way.

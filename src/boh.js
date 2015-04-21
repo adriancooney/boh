@@ -11,6 +11,16 @@ var fs = require("fs"),
 
 var boh = {};
 
+/**
+ * Identifier for boh to act on at the start of a string.
+ * @type {String}
+ */
+const BOH_INDENTIFIER = "!boh";
+
+/**
+ * Directory for temporarily placeing scripts while the run.
+ * @type {String}
+ */
 const TEMP_DIR = "/tmp/boh";
 
 /**
@@ -43,46 +53,51 @@ const TEMP_DIR = "/tmp/boh";
  * @return {String}        Contents of comment.
  */
 boh.extractHeader = function(string) {
-	return string.split("\n").reduce(function(state, line) {
-		if(state.extracting && (
-			line.match(/^\s*(\/\/)(.+)$/)  || // "//"
-			line.match(/^\s*(\/\*)(.+)$/) || // "/*"
-			line.match(/^\s*(#)(.+)$/) || // "#"
-			(state.commentType === "/*" && line.match(/^\s*\*(?!\/)(.+)$/)) || // Match " * " (comment block)
-			(state.commentType === "/*" && line.match(/^(.*)$/)) // Comment block without and prefix
-		)) {
+	// Ensure we have our boh token and that the file begins with the build rule.
+	if(string.match(boh.headerRegex || (boh.headerRegex = new RegExp("^(?:\\/|\\*|#)+\\s*" + BOH_INDENTIFIER)))) {
 
-			var contents;
+		// Split the string line by line
+		return string.split("\n").reduce(function(state, line) {
+			if(state.extracting && (
+				line.match(/^\s*(\/\/)(.+)$/)  || // "//"
+				line.match(/^\s*(\/\*)(.+)$/) || // "/*"
+				line.match(/^\s*(#)(.+)$/) || // "#"
+				(state.commentType === "/*" && line.match(/^\s*\*(?!\/)(.+)$/)) || // Match " * " (comment block)
+				(state.commentType === "/*" && line.match(/^(.*)$/)) // Comment block without and prefix
+			)) {
 
-			if(RegExp.$1 && RegExp.$2) { // If we have two matches, we have a comment type and some content
-				state.commentType = RegExp.$1;
-				contents = RegExp.$2;
-			} else if(RegExp.$1) { // If we have just one match, it's just content
-				contents = RegExp.$1
-			}
+				var contents;
 
-			if(contents) {
-				// Replace any closing tags that may be in the line when the comment type is /**/
-				if(state.commentType === "/*" && contents.match(/\*\//)) {
-					// Check if it's JUST a */
-					if(contents.match(/^\s*\*\/\s*$/)) {
-						// If it is, don't bother push anything
-						contents = false;
-					} else {
-						// Otherwise delete the closing comment tag 
-						contents = contents.replace(/\*\/.*/, "");
-					}
-
-					state.extracting = false; // Comment is closed, were done
+				if(RegExp.$1 && RegExp.$2) { // If we have two matches, we have a comment type and some content
+					state.commentType = RegExp.$1;
+					contents = RegExp.$2;
+				} else if(RegExp.$1) { // If we have just one match, it's just content
+					contents = RegExp.$1
 				}
 
-				// Push the contents
-				if(contents !== false) state.contents.push(contents);
-			}
-		}
+				if(contents) {
+					// Replace any closing tags that may be in the line when the comment type is /**/
+					if(state.commentType === "/*" && contents.match(/\*\//)) {
+						// Check if it's JUST a */
+						if(contents.match(/^\s*\*\/\s*$/)) {
+							// If it is, don't bother push anything
+							contents = false;
+						} else {
+							// Otherwise delete the closing comment tag 
+							contents = contents.replace(/\*\/.*/, "");
+						}
 
-		return state;
-	}, { contents: [], extracting: true }).contents.join("\n");
+						state.extracting = false; // Comment is closed, were done
+					}
+
+					// Push the contents
+					if(contents !== false) state.contents.push(contents);
+				}
+			}
+
+			return state;
+		}, { contents: [], extracting: true }).contents.join("\n");
+	}
 };
 
 /**
@@ -140,7 +155,9 @@ boh.extractRules = function(string) {
  * @return {Array}        [{ rule {String}, content {String} }]
  */
 boh.extractRulesFromHeader = function(string) {
-	return boh.extractRules(boh.extractHeader(string));
+	string = boh.extractHeader(string);
+	if(string) return boh.extractRules(string);
+	else return [];
 };
 
 /**
@@ -171,8 +188,8 @@ boh.buildIndex = function(directory, options, callback) {
 
 	// Merge the options
 	options = defaults(options || {}, {
-		ignore: ["node_modules", ".git", ".sass-cache"]
-	})
+		ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
+	});
 
 	debug("Building index for %s.", directory);
 	debug("Ignoring %s.", options.ignore.join(", ").magenta);
@@ -186,7 +203,7 @@ boh.buildIndex = function(directory, options, callback) {
 				entry = path.join(directory, entry);
 
 				// Make sure this path is included and not being ignored
-				if(micromatch.any(entry, options.ignore, { matchBase: true, dot: true }).length > 0) {
+				if(micromatch.any(entry, options.ignore, { dot: true })) {
 					debug(("Ignoring " + entry).blue);
 					return callback();
 				}
@@ -342,12 +359,9 @@ boh.Index.prototype.getRuleForFile = function(file, rule) {
 boh.Index.prototype.toString = function() {
 	var tab = "    ";
 	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
-		"Directories:\n" +
-		this.directories.map(function(dir) { return tab + dir.red; }).join("\n") + "\n" +
-		"Files:\n" +
-		this.files.map(function(file) { return tab + file.yellow; }).join("\n") + "\n" +
-		"Rules:\n" + 
-		Object.keys(this.rules).map(function(file) {
+		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + dir.red; }).join("\n") + "\n" : "") +
+		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + file.yellow; }).join("\n") + "\n" : "") +
+		(Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
 			return tab + file.bold + "\n" +
 				this.rules[file].map(function(rule) {
 					return tab + tab + rule.rule.red + ":\n" +
@@ -355,7 +369,7 @@ boh.Index.prototype.toString = function() {
 							return tab + tab + tab + line.trim();
 						}).join("\n");
 				}).join("\n");
-		}, this);
+		}, this).join("\n") : "")
 };
 
 /**
@@ -445,103 +459,140 @@ boh.build = function(index, values, callback) {
 	var debug = require("debug")("boh:build");
 	if(typeof values === "function") callback = values, values = undefined;
 
-	// Find all the build rules and reference the file
-	var rules = Object.keys(index.rules).reduce(function(buildRules, file) {
-		return buildRules.concat(index.rules[file].map(function(rule) {
-			if(rule.rule === "build") return {
-				file: file,
-				build: rule.content
-			}
-		}).filter(function(r) { return !!r; }));
-	}, []);
-
-	// Save the output
-	var emitter = new EventEmitter(),
-		output = [];
-
-	emitter.emit("start", rules, index);
-
-	// Only loop over the build rules
-	async.eachSeries(rules, function(rule, callback) {
-		// Build each rule
-		var builder = boh.buildRule(index, values, rule, function(err, built) {
-			if(err) callback(err);
-			else output.push(built), callback();
+	// Find all the rules and add a reference to the file
+	var rules = Object.keys(index.rules).reduce(function(rules, file) {
+		index.rules[file].forEach(function(rule) {
+			rule.file = file;
 		});
 
-		// Emit a `build` event with the builder emitter
-		emitter.emit("build", builder);
-	}, function(err) {
-		if(err && callback) callback(err);
-		else if(callback) callback(null, output);
+		return rules.concat(index.rules[file]);
+	}, []);
 
+	// Notify and save the output
+	var emitter = new EventEmitter(), output = [];
+
+	debug("Starting the build process.");
+
+	// Only loop over the build rules. nextTick to give them time to bind events
+	process.nextTick(async.eachSeries.bind(async, rules, function(rule, callback) {
+		var plugin = boh.executeRule(index, rule, function(err, built) {
+			if(err && err.code === "PLUGIN_NOT_FOUND") emitter.emit("error", err, rule);
+
+			// Save the output
+			output.push(built);
+
+			callback();
+		});
+
+		// Build each rule
+		if(plugin) emitter.emit("rule", plugin, rule);
+	}, function(err) {
 		// Emit the `finish` event
 		emitter.emit("finish", output);
-	});
+
+		if(err && callback) callback(err);
+		else if(callback) callback(null, output);
+	}));
 
 	return emitter;
 };
 
 /**
- * Build an individual rule.
+ * Execute an individual rule.
  * @param  {boh.Index}   index    The index the rule was taken from.
- * @param  {Object}   values      Key/value store.
  * @param  {Object}   rule        { file, build }
  * @param  {Function} callback
  * @return {EventEmitter} -> events { "start" -> (input), "error" -> (err), "finish" -> (stdout) }
  */
-boh.buildRule = function(index, values, rule, callback) {
-	var relative = index.relative(rule.file),
-		emitter = new EventEmitter();
+boh.executeRule = function(index, rule, callback) {
+	var relative = index.relative(rule.file);
 
-	debug("Building %s.", relative.yellow);
+	// Find the plugin, if it exists
+	var plugin = boh.getPlugin(rule.rule);
 
-	// Format the script
-	var script = boh.format(rule.build, defaults(values || {}, {
-		"this": rule.file
-	}));
+	// If the plugin doesn't exist, fail
+	if(!plugin) {
+		var err = new Error("Plugin " + rule.rule + " does not exist.")
+		err.code = "PLUGIN_NOT_FOUND";
+		return callback(err);
+	}
 
-	// Emit the `start` event with the script
-	emitter.emit("start", script);
+	debug("Running".bold + " %s:%s.", relative.yellow, rule.rule.cyan);
 
-	// Log the input
-	script.split("\n")
-		.map(function(l) { return l.trim(); })
-		.filter(function(l) { return !!l.trim(); })
-		.forEach(function(l) {
-			debug("> " + l);
-		});
+	// Execute.
+	plugin.execute(rule, index, callback);
 
-	// Execute the script
-	boh.execute(path.dirname(rule.file), script, function(err, stdout, stderr) {
+	return plugin;
+};
+
+/**
+ * Boh plugin store.
+ * @type {Object}
+ */
+boh.plugins = {};
+
+/**
+ * Register a new boh plugin.
+ * @param  {String} name   The name of the plugin.
+ * @param  {boh.Plugin} plugin The actual plugin.
+ */
+boh.registerPlugin = function(name, plugin) {
+	debug("Registering plugin %s.", name);
+	boh.plugins[name] = plugin;
+};
+
+/**
+ * Get a plugin by name,
+ * @param  {String} name The name of the plugin.
+ * @return {boh.Plugin}
+ */
+boh.getPlugin = function(name) {
+	return boh.plugins[name];
+};
+
+/**
+ * Create a new plugin.
+ * @param {String} name   The unique name of the plugin.
+ * @param {Function} runner The plugin runner (rule, callback).
+ */
+boh.Plugin = function(name, runner) {
+	EventEmitter.call(this);
+	this.pluginName = name;
+	this.runner = runner;
+	this.debug = require("debug")("boh:plugin:" + name);
+	this.log = this.emit.bind(this, "log");
+
+	// Register the plugin
+	boh.registerPlugin(name, this);
+};
+
+// Inherit from the EventEmitter
+boh.Plugin.prototype = Object.create(EventEmitter.prototype);
+
+/**
+ * Execute the plugin.
+ * @param  {Object}   rule     Rule sent with { file, content }
+ * @param  {Function} callback 
+ */
+boh.Plugin.prototype.execute = function(rule, index, callback) {
+	process.nextTick(this.emit.bind(this, "start", rule));
+
+	this.debug("Starting execution.");
+	this.runner.call(this, rule, index, function(err, output) {
 		if(err) {
-			err.message = err.message.replace(new RegExp("Command failed: " + TEMP_DIR + "/\\d+"), "Build error on " + relative);
-
-			// Log the error
-			debug(err.message.red);
-
-			// Build error
-			emitter.emit("error", err);
-
-			// Save the output
-			rule.error = err;
+			this.debug("Error:", err);
+			this.emit("error", err);
 		} else {
-			// Spit out the stdout to debug
-			stdout.split("\n")
-				.filter(function(l) { return !!l.trim(); })
-				.forEach(function(l) { debug(("< " + l).blue); });
-
-			// Emit the `finish` event with the output
-			emitter.emit("finish", stdout);
-
-			// Pass the stdout
-			rule.stdout = stdout;
+			rule.output = output;
+			this.emit("finish", rule);
 		}
 
-		callback(null, rule);
-	});
-
-	return emitter;
+		this.removeAllListeners();
+		if(callback) callback(err, rule);
+	}.bind(this))
 };
 
 module.exports = boh;
+
+// Require the default plugins
+require("./plugins");
