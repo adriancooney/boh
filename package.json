@@ -1,6 +1,6 @@
 {
   "name": "boh",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The simple build system.",
   "main": "src/boh.js",
   "directories": {
@@ -18,8 +18,17 @@
   "license": "MIT",
   "dependencies": {
     "async": "^0.9.0",
-    "commander": "^2.8.0",
+    "fn.map": "^1.0.0",
     "lodash.defaults": "^3.1.1",
     "micromatch": "^2.1.6"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adriancooney/boh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adriancooney/boh/issues"
+  },
+  "homepage": "https://github.com/adriancooney/boh"
 }

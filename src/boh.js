@@ -6,7 +6,6 @@ var fs = require("fs"),
 	colors = require("colors"),
 	async = require("async"),
 	map = require("fn.map"),
-	defaults = require("lodash.defaults"),
 	micromatch = require("micromatch");
 
 var boh = {};
@@ -187,7 +186,10 @@ boh.buildIndex = function(directory, options, callback) {
 	if(typeof options === "function") callback = options, options = null;
 
 	// Merge the options
-	options = defaults(options || {}, {
+	options = Object.keys(options).reduce(function(object, option) {
+		object[option] = options[option];
+		return object;
+	}, {
 		ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
 	});
 
