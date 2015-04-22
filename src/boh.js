@@ -14,7 +14,13 @@ var boh = {};
  * Identifier for boh to act on at the start of a string.
  * @type {String}
  */
-const BOH_INDENTIFIER = "!boh";
+const BOH_IDENTIFIER = "!boh";
+
+/**
+ * Boh plugin prefix.
+ * @type {String}
+ */
+const BOH_PLUGIN_PREFIX = "boh-";
 
 /**
  * Directory for temporarily placeing scripts while the run.
@@ -53,25 +59,27 @@ const TEMP_DIR = "/tmp/boh";
  */
 boh.extractHeader = function(string) {
 	// Ensure we have our boh token and that the file begins with the build rule.
-	if(string.match(boh.headerRegex || (boh.headerRegex = new RegExp("^(?:\\/|\\*|#)+\\s*" + BOH_INDENTIFIER)))) {
+	if(string.match(boh.headerRegex || (boh.headerRegex = new RegExp("^(?:\\/|\\*|#)+\\s*" + BOH_IDENTIFIER)))) {
+		// Remove the BOH_IDENTIFIER
+		string = string.replace(BOH_IDENTIFIER, "");
 
 		// Split the string line by line
-		return string.split("\n").reduce(function(state, line) {
+		return string.split("\n").reduce(function(state, line, index, values) {
 			if(state.extracting && (
-				line.match(/^\s*(\/\/)(.+)$/)  || // "//"
-				line.match(/^\s*(\/\*)(.+)$/) || // "/*"
-				line.match(/^\s*(#)(.+)$/) || // "#"
-				(state.commentType === "/*" && line.match(/^\s*\*(?!\/)(.+)$/)) || // Match " * " (comment block)
+				line.match(/^\s*(\/\/)(.*)$/)  || // "//"
+				line.match(/^\s*(\/\*)(.*)$/) || // "/*"
+				line.match(/^\s*(#)(.*)$/) || // "#"
+				(state.commentType === "/*" && line.match(/^\s*\*(?!\/)(.*)$/)) || // Match " * " (comment block)
 				(state.commentType === "/*" && line.match(/^(.*)$/)) // Comment block without and prefix
 			)) {
 
-				var contents;
+				var $1 = RegExp.$1, $2 = RegExp.$2, contents;
 
-				if(RegExp.$1 && RegExp.$2) { // If we have two matches, we have a comment type and some content
-					state.commentType = RegExp.$1;
-					contents = RegExp.$2;
-				} else if(RegExp.$1) { // If we have just one match, it's just content
-					contents = RegExp.$1
+				if(($1 && $2) || $1 == "/*") { // If we have two matches, we have a comment type and some content
+					state.commentType = $1;
+					contents = $2;
+				} else if($1) { // If we have just one match, it's just content
+					contents = $1
 				}
 
 				if(contents) {
@@ -186,7 +194,7 @@ boh.buildIndex = function(directory, options, callback) {
 	if(typeof options === "function") callback = options, options = null;
 
 	// Merge the options
-	options = Object.keys(options).reduce(function(object, option) {
+	options = Object.keys(options || {}).reduce(function(object, option) {
 		object[option] = options[option];
 		return object;
 	}, {
@@ -463,11 +471,12 @@ boh.build = function(index, values, callback) {
 
 	// Find all the rules and add a reference to the file
 	var rules = Object.keys(index.rules).reduce(function(rules, file) {
-		index.rules[file].forEach(function(rule) {
-			rule.file = file;
-		});
+		return rules.concat(index.rules[file].filter(function(rule) {
+			rule.file = file; // Add reference
 
-		return rules.concat(index.rules[file]);
+			// Ignore `includes` rules, that's internal for the index
+			return ["includes"].indexOf(rule.rule) === -1
+		}));
 	}, []);
 
 	// Notify and save the output
@@ -550,6 +559,88 @@ boh.registerPlugin = function(name, plugin) {
  */
 boh.getPlugin = function(name) {
 	return boh.plugins[name];
+};
+
+/**
+ * Find all the "boh-" in the package.json and globally.
+ * @param {String} base The base directory to begin the search.
+ * @param {Function} callback (err, plugins)
+ */
+boh.findPlugins = function(base, callback) {
+	if(typeof base === "function") callback = base, base = undefined;
+
+	// Get the package.json
+	async.waterfall([
+		function(callback) {
+			boh.getPackageJSON(base, function(err, packageJSON) {
+				// Require the node modules
+				if(err) callback(err);
+				else if(packageJSON.dependencies) callback(null, Object.keys(packageJSON.dependencies).filter(isPlugin));
+			});
+		},
+
+		function(plugins, callback) {
+			if(process.env.NODE_PATH) fs.readdir(process.env.NODE_PATH, function(err, entries) {
+				if(err) callback(err);
+				else callback(null, plugins.concat(entries.filter(isPlugin)))
+			});
+			else callback(plugins);
+		}
+	], callback);
+
+	function isPlugin(dependency) { return dependency.substr(0, BOH_PLUGIN_PREFIX.length) === BOH_PLUGIN_PREFIX; }
+};
+
+/**
+ * Require plugins from a list.
+ * @param  {Array} plugins Array of plugins.
+ * @param  {Function} callback (err)
+ * @return {EventEmitter}         
+ */
+boh.requirePlugins = function(plugins, callback) {
+	var ee = new EventEmitter();
+
+	// Allow us to return the emitter
+	process.nextTick(function() {
+		plugins.forEach(function(plugin) {
+			debug("Loading plugin %s.", plugin);
+			
+			try {
+				require(plugin);
+				ee.emit("plugin:loaded", plugin);
+			} catch(err) {
+				ee.emit("plugin:error", plugin, err);
+			}
+		});
+
+		// Run the callback, require is synchronous
+		callback();
+	});
+
+	return ee;
+};
+
+/**
+ * Traverse up the directory structure and find the package.json
+ * @param {String} dir The package to begin the search.
+ * @param {Function} callback
+ * @return {Object} package.json
+ */
+boh.getPackageJSON = function(dir, callback) {
+	if(typeof dir === "function") callback = dir, dir = undefined;
+
+	// If there is no directory, assume the current directory
+	if(!dir) dir = process.cwd();
+
+	debug("Checking for package.json in %s", dir);
+
+	// Read the current directory
+	fs.readdir(dir, function(err, entries) {
+		if(err) callback(err);
+		else if(entries.indexOf("package.json") !== -1) debug("package.json found in %s", dir.magenta), callback(null, require(path.join(dir, "package.json")));
+		else if(dir === "/") callback(null, undefined);
+		else boh.getPackageJSON(path.resolve(dir, ".."), callback);
+	})
 };
 
 /**

@@ -9,6 +9,9 @@ var path = require("path"),
 	config = require("../package.json"),
 	argv = process.argv.slice(2);
 
+// Tab character
+const TAB = "    ";
+
 /*
  * Print out the help.
  */
@@ -64,8 +67,35 @@ function run(dir) {
 		// Output the directory
 		function(stat, callback) {
 			var cwd = path.relative(process.cwd(), dir);
-			log("Running boh in %s.", (!cwd ? "the current directory" : cwd).magenta);
+			logRaw("Running boh in " + (!cwd ? "the current directory" : cwd).magenta);
+			callback();
+		},
 
+		boh.findPlugins.bind(null),
+
+		function(plugins, callback) { 
+			// No plugins, exit
+			if(plugins.length === 0) {
+				logRaw(".\n");
+				return callback();
+			}
+
+			logRaw(" with plugins: ")
+			var emitter = boh.requirePlugins(plugins, function(err) {
+				if(err) callback(err);
+				else logRaw("\n"), callback();
+			});
+
+			emitter.on("plugin:loaded", function(plugin) { 
+				logRaw((plugin + " ✓ ").green); 
+			});
+
+			emitter.on("plugin:error", function(plugin) { 
+				logRaw((plugin + " ✘ ").red); 
+			});
+		},
+
+		function(callback) {
 			var options = {}, value;
 
 			// Ignore some files/directorys. Supports micromatch (https://www.npmjs.com/package/micromatch)
@@ -87,9 +117,9 @@ function run(dir) {
 			builder.on("rule", function(plugin, rule) {
 				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.cyan;
 
-				plugin.on("start", map(logRaw, null, descriptor));
+				plugin.on("start", map(logRaw, null, "\n" + TAB + descriptor));
 
-				plugin.on("log", log.bind(null, descriptor));
+				plugin.on("log", log.bind(null, TAB + descriptor));
 
 				plugin.on("error", function(err) {
 					logRaw(" ✘".red + " -> " + "Error: ".red + err.message);
@@ -101,7 +131,7 @@ function run(dir) {
 					if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
 						return !!line;
 					}).map(function(line) {
-						return "    > " + line;
+						return TAB + TAB + "> " + line;
 					}).forEach(map(log, null, map.$1));
 				});
 			});
@@ -111,15 +141,16 @@ function run(dir) {
 
 				switch(err.code) {
 					case "PLUGIN_NOT_FOUND":
-						log(descriptor + " - Plugin not found! Try running " + ("npm install --save-dev boh-" + rule.rule).blue);
+						log("\n" + TAB + descriptor + " - Plugin not found! Try running " + ("npm install --save-dev boh-" + rule.rule).blue);
 					break;
 				}
 			})
 
-			builder.on("finish", map(log, null, "Build complete."));
+			builder.on("finish", map(log, null, "\nBuild complete."));
 		}
 	], function(err) {
 		if(err && err.code === "ENOENT") fail("%s does not exist.", dir);
+		else if(err) fail(err);
 	})
 }
 
@@ -142,6 +173,17 @@ function index(dir) {
 		if(err) fail(err);
 		else index.toString().split("\n").forEach(map(log, null, map.$1));
 	});
+}
+
+/**
+ * Load all the plugins from the current directory.
+ * @param  {Function} callback 
+ */
+function loadPlugins(callback) {
+	async.waterfall([
+		// Find the plugins
+		boh.findPlugins.bind(boh),
+	], callback);
 }
 
 /**
