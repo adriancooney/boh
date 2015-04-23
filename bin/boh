@@ -119,7 +119,7 @@ function run(dir) {
 
 				plugin.on("start", map(logRaw, null, "\n" + TAB + descriptor));
 
-				plugin.on("log", log.bind(null, TAB + descriptor));
+				// plugin.on("log", log.bind(null, TAB + descriptor));
 
 				plugin.on("error", function(err) {
 					logRaw(" ✘".red + " -> " + "Error: ".red + err.message);
@@ -136,17 +136,22 @@ function run(dir) {
 				});
 			});
 
+			var errors = [];
 			builder.on("error", function(err, rule) {
 				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.red;
 
 				switch(err.code) {
 					case "PLUGIN_NOT_FOUND":
-						log("\n" + TAB + descriptor + " - Plugin not found! Try running " + ("npm install --save-dev boh-" + rule.rule).blue);
+						log("\n" + TAB + descriptor + " -> Plugin " + rule.rule.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.rule).blue);
 					break;
 				}
+
+				errors.push([err, rule]);
 			})
 
-			builder.on("finish", map(log, null, "\nBuild complete."));
+			builder.on("finish", function() {
+				log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
+			});
 		}
 	], function(err) {
 		if(err && err.code === "ENOENT") fail("%s does not exist.", dir);

@@ -366,13 +366,13 @@ boh.Index.prototype.getRuleForFile = function(file, rule) {
  * Convert to a string.
  * @return {String} 
  */
-boh.Index.prototype.toString = function() {
+boh.Index.prototype.toString = function(fullPath) {
 	var tab = "    ";
 	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
-		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + dir.red; }).join("\n") + "\n" : "") +
-		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + file.yellow; }).join("\n") + "\n" : "") +
+		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
+		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
 		(Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
-			return tab + file.bold + "\n" +
+			return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
 				this.rules[file].map(function(rule) {
 					return tab + tab + rule.rule.red + ":\n" +
 						rule.content.split("\n").map(function(line) {
@@ -604,9 +604,15 @@ boh.requirePlugins = function(plugins, callback) {
 	process.nextTick(function() {
 		plugins.forEach(function(plugin) {
 			debug("Loading plugin %s.", plugin);
-			
+
 			try {
-				require(plugin);
+				var pluginName = plugin.replace(BOH_PLUGIN_PREFIX, ""),
+					pluginExport = require(plugin);
+
+				pluginExport.pluginName = pluginName;
+				pluginExport.debug = require("debug")("boh:plugin:" + name);
+
+				boh.registerPlugin(pluginName, pluginExport);
 				ee.emit("plugin:loaded", plugin);
 			} catch(err) {
 				ee.emit("plugin:error", plugin, err);
@@ -648,15 +654,11 @@ boh.getPackageJSON = function(dir, callback) {
  * @param {String} name   The unique name of the plugin.
  * @param {Function} runner The plugin runner (rule, callback).
  */
-boh.Plugin = function(name, runner) {
+boh.Plugin = function(runner) {
 	EventEmitter.call(this);
-	this.pluginName = name;
 	this.runner = runner;
-	this.debug = require("debug")("boh:plugin:" + name);
+	this.debug = require("debug")("boh:plugin");
 	this.log = this.emit.bind(this, "log");
-
-	// Register the plugin
-	boh.registerPlugin(name, this);
 };
 
 // Inherit from the EventEmitter
@@ -687,5 +689,12 @@ boh.Plugin.prototype.execute = function(rule, index, callback) {
 
 module.exports = boh;
 
-// Require the default plugins
-require("./plugins");
+// Require the packaged plugins
+fs.readdirSync(path.join(__dirname, "plugins")).forEach(function(plugin) {
+	var pluginExport = require("./plugins/" + plugin),
+		pluginName = plugin.replace(".js", "");
+
+	plugin.pluginName = pluginName;
+	plugin.debug = require("debug")("boh:plugin:" + pluginName);
+	boh.registerPlugin(pluginName, pluginExport);
+});

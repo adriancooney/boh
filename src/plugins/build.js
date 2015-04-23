@@ -1,7 +1,7 @@
 var boh = require("../boh"),
 	path = require("path");
 
-module.exports = new boh.Plugin("build", function run(rule, index, callback) {
+module.exports = new boh.Plugin(function run(rule, index, callback) {
 
 	// Format the script
 	var script = boh.format(rule.content, {
@@ -13,7 +13,7 @@ module.exports = new boh.Plugin("build", function run(rule, index, callback) {
 		.map(function(l) { return l.trim(); })
 		.filter(function(l) { return !!l.trim(); })
 		.forEach(function(l) {
-			this.debug("> " + l);
+			this.log("> " + l);
 		}, this);
 
 	// Execute the script
@@ -25,7 +25,7 @@ module.exports = new boh.Plugin("build", function run(rule, index, callback) {
 			// Spit out the stdout to debug
 			stdout.split("\n")
 				.filter(function(l) { return !!l.trim(); })
-				.forEach(function(l) { this.debug(("< " + l)); }, this);
+				.forEach(function(l) { this.log(("< " + l)); }, this);
 
 			callback(null, stdout);
 		}
