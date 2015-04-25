@@ -27,15 +27,17 @@ boh - a simple build tool.
     --index <dir>           Print the boh index of a directory.
 */}.toString().replace(/(^[^\n]*\n)|(\n\*\/\})/g, ""));
 
-if(require.main === module) program({
-	"--version": log.bind(null, config.version),
+if(require.main === module) {
+	program({
+		"--version": log.bind(null, config.version),
 
-	"watch": watch,
+		"watch": watch,
 
-	"help|--help": help,
+		"help|--help": help,
 
-	"--index": index
-}, run);
+		"--index": index
+	}, run);
+}
 
 /**
  * Start boh watching a directory.
@@ -71,6 +73,7 @@ function run(dir) {
 			callback();
 		},
 
+		// Find installed plugins
 		boh.findPlugins.bind(null),
 
 		function(plugins, callback) { 
@@ -98,7 +101,7 @@ function run(dir) {
 		function(callback) {
 			var options = {}, value;
 
-			// Ignore some files/directorys. Supports micromatch (https://www.npmjs.com/package/micromatch)
+			// Ignore option. Supports micromatch (https://www.npmjs.com/package/micromatch)
 			if(value = option("--ignore")) options.ignore = value.split(",").map(function(p) { return p.trim(); });
 
 			callback(null, options);
@@ -108,30 +111,35 @@ function run(dir) {
 		boh.buildIndex.bind(boh, dir),
 
 		function(index, callback) {
+			var verbose = option("-v");
+
 			// Log the index if verbose
-			if(option("-v")) log(index.toString());
+			if(verbose) log(index.toString());
 
 			// Start the build process
-			var builder = boh.build(index, callback);
+			var builder = new boh.Builder();
 
 			builder.on("rule", function(plugin, rule) {
-				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.cyan;
+				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.cyan,
+					x, y;
 
-				plugin.on("start", map(logRaw, null, "\n" + TAB + descriptor));
+				plugin.on("start", function() {
+					logRaw("\n" + TAB + descriptor + (verbose ? "\n" : ""));
+				});
 
-				// plugin.on("log", log.bind(null, TAB + descriptor));
+				if(verbose) plugin.on("log", log.bind(null, TAB + TAB));
 
 				plugin.on("error", function(err) {
-					logRaw(" ✘".red + " -> " + "Error: ".red + err.message);
+					logRaw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
 				});
 
 				plugin.on("finish", function(rule) {
-					logRaw(" ✓".green + "\n");
+					logRaw((verbose ? "\n" + TAB + descriptor : "") + (" ✓ (" + rule.duration + "ms)").green + "\n");
 
 					if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
 						return !!line;
 					}).map(function(line) {
-						return TAB + TAB + "> " + line;
+						return TAB + TAB + "-> ".red + line;
 					}).forEach(map(log, null, map.$1));
 				});
 			});
@@ -152,6 +160,9 @@ function run(dir) {
 			builder.on("finish", function() {
 				log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
 			});
+
+			// Start the build!
+			builder.build(index, callback);
 		}
 	], function(err) {
 		if(err && err.code === "ENOENT") fail("%s does not exist.", dir);

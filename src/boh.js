@@ -1,4 +1,5 @@
 var fs = require("fs"),
+	os = require("os"),
 	path = require("path"),
 	cp = require("child_process"),
 	EventEmitter = require("events").EventEmitter,
@@ -11,7 +12,7 @@ var fs = require("fs"),
 var boh = {};
 
 /**
- * Identifier for boh to act on at the start of a string.
+ * Identifier for boh to act on at the start of a header comment block.
  * @type {String}
  */
 const BOH_IDENTIFIER = "!boh";
@@ -21,12 +22,6 @@ const BOH_IDENTIFIER = "!boh";
  * @type {String}
  */
 const BOH_PLUGIN_PREFIX = "boh-";
-
-/**
- * Directory for temporarily placeing scripts while the run.
- * @type {String}
- */
-const TEMP_DIR = "/tmp/boh";
 
 /**
  * Extract the contents of the header comment. It should account for all
@@ -118,8 +113,8 @@ boh.extractHeader = function(string) {
  * 		-> [{ rule: "build", content: "    browserify\n    uglify" }]
  *
  * 		"build: browserify
- * 		 includes: User.js"
- * 		-> [{ rule: "build", content: "browserify"}, { rule: "includes", content: "User.js"}]
+ * 		 links: User.js"
+ * 		-> [{ rule: "build", content: "browserify"}, { rule: "links", content: "User.js"}]
  * 		
  * @param  {String} string String with rules.
  * @return {Array}         [{ rule {String}, content {String} }]
@@ -178,6 +173,15 @@ boh.extractRulesFromFile = function(file, callback) {
 
 		function(contents, callback) {
 			callback(null, boh.extractRulesFromHeader(contents));
+		},
+
+		function(rules, callback) {
+			// Add a reference to the file the rules was extracted from
+			rules.forEach(function(rule) {
+				rule.file = file;
+			});
+
+			callback(null, rules);
 		}
 	], callback);
 };
@@ -281,9 +285,7 @@ boh.Index = function(root) {
 	this.directories = [];
 	this.files = [];
 	this.rules = {};
-
-	// Different rule applications
-	this.includes = {};
+	this.links = {};
 };
 
 /**
@@ -309,18 +311,6 @@ boh.Index.prototype.addFile = function(path) {
  */
 boh.Index.prototype.addRules = function(file, rules) {
 	this.rules[file] = rules;
-
-	// Loop over the rules and apply any if required
-	// during index creation.
-	rules.forEach(function(rule) {
-		switch(rule.rule) {
-			case "includes":
-				rule.content.split(",") // Comma separated paths
-					.map(function(path) { return path.trim(); }) // Trim them down
-					.forEach(this.include.bind(this, file));
-			break;
-		}
-	}, this);
 };
 
 /**
@@ -328,11 +318,11 @@ boh.Index.prototype.addRules = function(file, rules) {
  * @param  {String} owner /path/to/owner/file
  * @param  {String} file  /path/to/file
  */
-boh.Index.prototype.include = function(owner, file) {
+boh.Index.prototype.link = function(owner, file) {
 	file = path.resolve(path.dirname(owner), file);
-	debug("%s includes %s.", owner.red, file.blue);
+	debug("%s links %s.", owner.red, file.blue);
 
-	this.includes[file] = owner;
+	this.links[file] = owner;
 };
 
 /**
@@ -345,7 +335,7 @@ boh.Index.prototype.include = function(owner, file) {
  */
 boh.Index.prototype.getRulesForFile = function(file) {
 	if(this.rules[file]) return this.rules[file];
-	else if(this.includes[file]) return this.rules[this.includes[file]];
+	else if(this.links[file]) return this.rules[this.links[file]];
 };
 
 /**
@@ -371,6 +361,7 @@ boh.Index.prototype.toString = function(fullPath) {
 	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
 		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
 		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
+		(Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow + "->" + (fullPath ? file : this.relative(this.links[file])); }, this).join("\n") + "\n" : "") +
 		(Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
 			return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
 				this.rules[file].map(function(rule) {
@@ -379,7 +370,7 @@ boh.Index.prototype.toString = function(fullPath) {
 							return tab + tab + tab + line.trim();
 						}).join("\n");
 				}).join("\n");
-		}, this).join("\n") : "")
+		}, this).join("\n") : "");
 };
 
 /**
@@ -403,6 +394,9 @@ boh.format = function(string, values, prefix) {
 	if(!values) throw new Error("Please provide an object or array of values.");
 
 	var i = 0;
+	// This regex may be a little hard to understand but the extra slash 
+	// is because of the double quotes. It really translates to (with $ as prefix):
+	// 		/(\\)?\$([a-zA-Z_0-9]+)/
 	return string.replace(new RegExp("(\\\\)?\\" + prefix + "([a-zA-Z_0-9]+)", "g"), function(match, u, name) {
 		if(u === "\\") return match.replace("\\", "");
 		else {
@@ -420,22 +414,26 @@ boh.format = function(string, values, prefix) {
  */
 boh.execute = function(cwd, script, callback) {
 	var debug = require("debug")("boh:execute"),
-		filename = path.join(TEMP_DIR, Math.floor(Math.random() * 1000000) + "");
+		filename = path.join(os.tmpdir(), Math.floor(Math.random() * 1000000) + "");
 
 	// Create the script file in directory.
 	async.waterfall([
+		// Now were using os.tmpdir() to get the
+		// temporary directory but I'm leaving this in till
+		// it's os.tmpdir() is tested fully.
+		// 
 		// Make sure the temp directory exists
-		function(callback) {
-			fs.stat(TEMP_DIR, function(err, stat) {
-				if(err && err.code === "ENOENT")
-					async.series([
-						fs.mkdir.bind(fs, TEMP_DIR),
-						fs.chown.bind(fs, TEMP_DIR, process.getuid(), process.getgid())
-					], callback);
-				else if(err) callback(err);
-				else callback();
-			})
-		},
+		// function(callback) {
+		// 	fs.stat(TEMP_DIR, function(err, stat) {
+		// 		if(err && err.code === "ENOENT")
+		// 			async.series([
+		// 				fs.mkdir.bind(fs, TEMP_DIR),
+		// 				fs.chown.bind(fs, TEMP_DIR, process.getuid(), process.getgid())
+		// 			], callback);
+		// 		else if(err) callback(err);
+		// 		else callback();
+		// 	})
+		// },
 
 		// Create the script in the directory
 		fs.writeFile.bind(fs, filename, script),
@@ -459,81 +457,73 @@ boh.execute = function(cwd, script, callback) {
 	});
 };
 
+boh.Builder = EventEmitter;
+boh.Builder.prototype = Object.create(EventEmitter.prototype);
+
 /**
  * Run boh on an {boh.Index}. This means, run
  * all the build rules.
  * @param  {String} directory /path/to/directory
  * @return {EventEmitter} -> events { "start" -> (rules, index), "build" -> see .buildRule, "finish" -> (output) }
  */
-boh.build = function(index, values, callback) {
+boh.Builder.prototype.build = function(index, values, callback) {
 	var debug = require("debug")("boh:build");
 	if(typeof values === "function") callback = values, values = undefined;
 
-	// Find all the rules and add a reference to the file
+	// Collect all the rules from the index into a single array
 	var rules = Object.keys(index.rules).reduce(function(rules, file) {
-		return rules.concat(index.rules[file].filter(function(rule) {
-			rule.file = file; // Add reference
-
-			// Ignore `includes` rules, that's internal for the index
-			return ["includes"].indexOf(rule.rule) === -1
-		}));
+		return rules.concat(index.rules[file]);
 	}, []);
 
-	// Notify and save the output
-	var emitter = new EventEmitter(), output = [];
+	// Add a reference to the emitter and create the output store
+	var emitter = this, output = [];
 
 	debug("Starting the build process.");
 
 	// Only loop over the build rules. nextTick to give them time to bind events
-	process.nextTick(async.eachSeries.bind(async, rules, function(rule, callback) {
-		var plugin = boh.executeRule(index, rule, function(err, built) {
-			if(err && err.code === "PLUGIN_NOT_FOUND") emitter.emit("error", err, rule);
+	async.eachSeries(rules, function(rule, callback) {
+		var relative = index.relative(rule.file);
 
-			// Save the output
-			output.push(built);
+		// Find the plugin, if it exists
+		var plugin = boh.getPlugin(rule.rule);
 
-			callback();
+		// If the plugin doesn't exist, fail
+		if(!plugin) {
+			var err = new Error("Plugin " + rule.rule + " does not exist.")
+			err.code = "PLUGIN_NOT_FOUND";
+			
+			emitter.emit("error", err, rule);
+			return callback();
+		}
+
+		// Emit the plugin and rule
+		emitter.emit("rule", plugin, rule);
+
+		// Format the rule content
+		rule.content = boh.format(rule.content, {
+			"this": rule.file
 		});
 
-		// Build each rule
-		if(plugin) emitter.emit("rule", plugin, rule);
+		debug("Running".bold + " %s:%s.", relative.yellow, rule.rule.cyan);
+
+		plugin.execute(rule, index, function(err, built) {
+
+			// Remove any listeners
+			plugin.removeAllListeners();
+
+			// Save the output regardless if it errored or not
+			output.push(err || built);
+			
+			// Continue onto the next
+			callback();
+		});
 	}, function(err) {
 		// Emit the `finish` event
 		emitter.emit("finish", output);
 
 		if(err && callback) callback(err);
-		else if(callback) callback(null, output);
-	}));
-
-	return emitter;
-};
-
-/**
- * Execute an individual rule.
- * @param  {boh.Index}   index    The index the rule was taken from.
- * @param  {Object}   rule        { file, build }
- * @param  {Function} callback
- * @return {EventEmitter} -> events { "start" -> (input), "error" -> (err), "finish" -> (stdout) }
- */
-boh.executeRule = function(index, rule, callback) {
-	var relative = index.relative(rule.file);
-
-	// Find the plugin, if it exists
-	var plugin = boh.getPlugin(rule.rule);
-
-	// If the plugin doesn't exist, fail
-	if(!plugin) {
-		var err = new Error("Plugin " + rule.rule + " does not exist.")
-		err.code = "PLUGIN_NOT_FOUND";
-		return callback(err);
-	}
-
-	debug("Running".bold + " %s:%s.", relative.yellow, rule.rule.cyan);
-
-	// Execute.
-	plugin.execute(rule, index, callback);
-
-	return plugin;
+		else if(callback) callback(undefined, output);
+	});
 };
 
 /**
@@ -619,7 +609,7 @@ boh.requirePlugins = function(plugins, callback) {
 			}
 		});
 
-		// Run the callback, require is synchronous
+		// Run the callback out here by itself, require is synchronous
 		callback();
 	});
 
@@ -670,26 +660,48 @@ boh.Plugin.prototype = Object.create(EventEmitter.prototype);
  * @param  {Function} callback 
  */
 boh.Plugin.prototype.execute = function(rule, index, callback) {
-	process.nextTick(this.emit.bind(this, "start", rule));
+	// Tell the outside world the plugin is starting
+	this.emit("start", rule);
 
 	this.debug("Starting execution.");
-	this.runner.call(this, rule, index, function(err, output) {
-		if(err) {
-			this.debug("Error:", err);
-			this.emit("error", err);
-		} else {
-			rule.output = output;
-			this.emit("finish", rule);
-		}
 
-		this.removeAllListeners();
-		if(callback) callback(err, rule);
-	}.bind(this))
+	try {
+		rule.timeStart = Date.now();
+
+		// Execute the plugin
+		this.runner.call(this, rule, index, function(err, output) {
+			// Add some perf information
+			rule.timeEnd = Date.now();
+			rule.duration = rule.timeEnd - rule.timeStart;
+
+			if(err) {
+				this.debug("Execution Error: ", err);
+				this.emit("error", err);
+			} else {
+				rule.output = output;
+				this.debug("Execution Complete.".green);
+				this.emit("finish", rule);
+			}
+
+			callback(err, rule);
+		}.bind(this))
+	} catch (err) {
+		// Add timing information on fail
+		rule.timeEnd = Date.now();
+		rule.duration = rule.timeEnd - rule.timeStart;
+
+		// Emit and log the debug error
+		this.debug("Execution Error: ", err);
+		this.emit("error", err);
+
+		// Continue with the callback
+		callback(err);
+	}
 };
 
 module.exports = boh;
 
-// Require the packaged plugins
+// Require the packaged plugins in plugins/ and manually register them
 fs.readdirSync(path.join(__dirname, "plugins")).forEach(function(plugin) {
 	var pluginExport = require("./plugins/" + plugin),
 		pluginName = plugin.replace(".js", "");
