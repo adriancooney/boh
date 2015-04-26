@@ -1,7 +1,12 @@
-var boh = require("./boh"),
+var EventEmitter = require("events").EventEmitter,
+	boh = require("./boh"),
 	async = require("async"),
-	EventEmitter = require("events").EventEmitter;
+	debug = require("debug")("boh:build");
 
+/**
+ * The builder class.
+ * @type {EventEmitter}
+ */
 var Builder = EventEmitter;
 
 /**
@@ -10,19 +15,28 @@ var Builder = EventEmitter;
  * @param  {String} directory /path/to/directory
  * @return {EventEmitter} -> events { "start" -> (rules, index), "build" -> see .buildRule, "finish" -> (output) }
  */
-Builder.prototype.build = function(index, values, callback) {
-	var debug = require("debug")("boh:build");
-	if(typeof values === "function") callback = values, values = undefined;
+Builder.prototype.build = function(index, callback) {
 
 	// Collect all the rules from the index into a single array
 	var rules = Object.keys(index.rules).reduce(function(rules, file) {
 		return rules.concat(index.rules[file]);
 	}, []);
 
+	debug("Starting the build process.");
+
+	// Build the rules
+	this.buildRules(index, rules, callback);
+};
+
+/**
+ * Build a set of rules.
+ * @param  {boh.Index}   index    The file index.
+ * @param  {Array}   rules    Array of rules to build.
+ * @param  {Function} callback
+ */
+Builder.prototype.buildRules = function(index, rules, callback) {
 	// Add a reference to the emitter and create the output store
 	var emitter = this, output = [], phase = "building";
-
-	debug("Starting the build process.");
 
 	async.eachSeries(rules, function(rule, callback) {
 		// Check if the path isn't ignored
