@@ -11,9 +11,9 @@ var Index = function(root) {
 	this.root = root;
 	this.directories = [];
 	this.files = [];
+	this.ignores = [];
 	this.rules = {};
 	this.links = {};
-	this.ignores = {};
 };
 
 /**
@@ -114,11 +114,10 @@ Index.prototype.link = function(owner, pathname) {
  * @param  {String} phase    The phase at which to ignore e.g. building, indexing
  * @param  {String|Array} pathspec The paths to ignore.
  */
-Index.prototype.ignore = function(phase, pathspec) {
-	if(!this.ignores[phase]) this.ignores[phase] = [];
-	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this, phase));
-	else this.ignores[phase].push(pathspec);
-}
+Index.prototype.ignore = function(pathspec) {
+	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this));
+	else if(this.ignores.indexOf(pathspec) === -1) this.ignores.push(pathspec);
+};
 
 /**
  * Test whether the index is ignoring a path at a specific phase.
@@ -126,8 +125,8 @@ Index.prototype.ignore = function(phase, pathspec) {
  * @param  {String} pathname The path to test against.
  * @return {Boolean}         Whether or not the index is ignoring the path.
  */
-Index.prototype.ignoring = function(phase, pathname) {
-	return micromatch.any(pathname, this.ignores[phase] || [], { dot: true });
+Index.prototype.ignoring = function(pathname) {
+	return micromatch.any(pathname, this.ignores, { dot: true });
 };
 
 /**
@@ -159,6 +158,7 @@ Index.prototype.getRuleForFile = function(file, rule) {
 
 /**
  * Convert to a string.
+ * @param {Boolean} fullPath Display the paths in the output relative to the index or the full path.
  * @return {String} 
  */
 Index.prototype.toString = function(fullPath) {
@@ -166,10 +166,9 @@ Index.prototype.toString = function(fullPath) {
 	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
 		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
 		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
-		(Object.keys(this.ignores).length ? "Ignoring:\n" + tab + Object.keys(this.ignores).reduce(function(pathspecs, phase) {
-			this.ignores[phase].forEach(function(p) { p = this.relative(p + (" [" + phase + "]").black); if(pathspecs.indexOf(p) === -1) pathspecs.push(p); }, this);
-			return pathspecs;
-		}.bind(this), []).join("\n" + tab) + "\n" : "") + 
+		(this.ignores.length ? "Ignoring:\n" + tab + this.ignores.map(function(pathname) { 
+			return this.relative(pathname); 
+		}, this).join("\n" + tab) + "\n" : "") + 
 		(Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { 
 			return tab + (fullPath ? file : this.relative(file)).yellow + " -> " + 
 				(fullPath ? file : this.relative(this.links[file])); 

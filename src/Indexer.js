@@ -23,7 +23,7 @@ Indexer.prototype.index = function(directory, options, callback) {
 	});
 
 	// Push the ignores
-	index.ignore("indexing", options.ignore);
+	index.ignore(options.ignore);
 
 	debug("Building index for %s.", directory);
 	debug("Ignoring %s.", options.ignore.join(", ").magenta);
@@ -40,7 +40,7 @@ Indexer.prototype.index = function(directory, options, callback) {
 					entry = path.join(directory, entry);
 
 					// Make sure this path is included and not being ignored
-					if(index.ignoring("indexing", entry)) {
+					if(index.ignoring(entry)) {
 						debug(("Ignoring " + entry).blue);
 						self.emit("ignoring", entry);
 						return callback();

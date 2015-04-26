@@ -6,19 +6,18 @@ describe("boh.Index", function() {
 
 	describe("#ignore", function() {
 		it("should add paths to the ignores with phase", function() {
-			index.ignore("building", "a/b");
-			index.ignore("indexing", ["a/b", "b/c"]);
-			assert(index.ignores.building && index.ignores.indexing);
-			assert.equal(index.ignores.building[0], "a/b");
-			assert.deepEqual(index.ignores.indexing, ["a/b", "b/c"]);
+			index.ignore("a/b");
+			index.ignore(["a/b", "b/c"]);
+			assert(Array.isArray(index.ignores));
+			assert.deepEqual(index.ignores, ["a/b", "b/c"]);
 		});
 	});
 
 	describe("#ignoring", function() {
 		it("should return true or false whether the index is ignoring paths at a certain phase", function() {
-			assert(index.ignoring("building", "a/b"));
-			assert(index.ignoring("indexing", "b/c"));
-			assert(!index.ignoring("building", "b/c"));
+			assert(index.ignoring("a/b"));
+			assert(index.ignoring("b/c"));
+			assert(!index.ignoring("a/c"));
 		});
 	});
 

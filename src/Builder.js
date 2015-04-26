@@ -26,7 +26,7 @@ Builder.prototype.build = function(index, values, callback) {
 
 	async.eachSeries(rules, function(rule, callback) {
 		// Check if the path isn't ignored
-		if(index.ignoring("building", rule.file)) return callback();
+		if(index.ignoring(rule.file)) return callback();
 
 		var relative = index.relative(rule.file);
 
