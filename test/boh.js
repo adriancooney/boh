@@ -13,16 +13,16 @@ describe("boh", function () {
 		});
 
 		it("should extract a rule from `/* */` comment head", function() {
-			// assert.equal(boh.extractHeader("/*!boh Hello world!"), " Hello world!");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! */"), " Hello world! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! */ "), " Hello world! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!"), " Hello world! \n Hello world again!");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */"), " Hello world! \n Hello world again!\n And again! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! \n*/"), " Hello world! \n Hello world again!\n And again! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */foo"), " Hello world! \n Hello world again!\n And again! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\nfoo"), " Hello world! \n Hello world again!\n And again! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
-			// assert.equal(boh.extractHeader("/*!boh Hello world! \n Hello world again!\n And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world!"), " Hello world!");
+			assert.equal(boh.extractHeader("/*!boh Hello world! */"), " Hello world! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! */ "), " Hello world! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!"), " Hello world! \n Hello world again!");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! \n*/"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */foo"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\nfoo"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
+			assert.equal(boh.extractHeader("/*!boh Hello world! \n Hello world again!\n And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
 			assert.equal(boh.extractHeader("/*!boh\n Hello world! \n Hello world again!\n And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
 		});
 
@@ -34,42 +34,20 @@ describe("boh", function () {
 	});
 
 	describe(".extractRules", function() {
-		it("should extract a single line rule", function() {
-			assert.deepEqual(boh.extractRules("build:foo"), [{ rule: "build", content: "foo" }]);
-			assert.deepEqual(boh.extractRules(" build: foo"), [{ rule: "build", content: " foo" }]);
-			assert.deepEqual(boh.extractRules(" build: foo\nbar"), [{ rule: "build", content: " foo" }]);
-		});
-
-		it("should extract a multi-line rule", function() {
-			assert.deepEqual(boh.extractRules("build:\nfoo"), [{ rule: "build", content: "foo" }]);
-			assert.deepEqual(boh.extractRules("build:\nfoo\n bar"), [{ rule: "build", content: "foo\n bar" }]);
-			assert.deepEqual(boh.extractRules(" build:\nfoo\n bar"), [{ rule: "build", content: "foo\n bar" }]);
-		});
-
-		it("should extract a multiple single line rules", function() {
-			assert.deepEqual(boh.extractRules("build: foo\nincludes: none"), 
-				[{ rule: "build", content: " foo" }, { rule: "includes", content: " none"}]);
-		});
-
-		it("should extract a multiple multi-line rules", function() {
-			assert.deepEqual(boh.extractRules("build: \nfoo\nincludes: \nnone\ntwo"), 
-				[{ rule: "build", content: "foo" }, { rule: "includes", content: "none\ntwo"}]);
-		});
-
-		it("should extract a multiple single line and multi-line rules", function() {
-			assert.deepEqual(boh.extractRules("build: \nfoo\nbar: root\nincludes: \nnone\ntwo"), 
-				[{ rule: "build", content: "foo" }, { rule: "bar", content: " root" }, { rule: "includes", content: "none\ntwo"}]);
+		it("should successfully parse YAML and return rules", function() {
+			assert.deepEqual(boh.extractRules("build: foo"), [{ name: "build", content: "foo" }]);
+			assert.deepEqual(boh.extractRules("build: |\n  foo\n  bar"), [{ name: "build", content: "foo\nbar\n" }]);
 		});
 	});
 
 	describe(".extractRulesFromHeader", function () {
-		var expected = [{ rule: "build", content: " browserify" }, { rule: "includes", content: "   index.js\n   User.js" }];
+		var expected = [{ name: "build", content: "browserify" }, { name: "includes", content: ["index.js", "User.js"] }];
 		it("should extract the rules from an // header", function() {
 			var header = [
 				"//!boh build: browserify",
 				"// includes:",
-				"//   index.js",
-				"//   User.js",
+				"//   - index.js",
+				"//   - User.js",
 			].join("\n");
 
 			assert.deepEqual(boh.extractRulesFromHeader(header), expected);
@@ -79,8 +57,8 @@ describe("boh", function () {
 			var header = [
 				"#!boh build: browserify",
 				"# includes:",
-				"#   index.js",
-				"#   User.js",
+				"#   - index.js",
+				"#   - User.js",
 			].join("\n");
 
 			assert.deepEqual(boh.extractRulesFromHeader(header), expected);
@@ -90,8 +68,8 @@ describe("boh", function () {
 			var header = [
 				"/*!boh build: browserify",
 				" includes:",
-				"   index.js",
-				"   User.js*/",
+				"   - index.js",
+				"   - User.js*/",
 			].join("\n");
 
 			assert.deepEqual(boh.extractRulesFromHeader(header), expected);
@@ -101,8 +79,8 @@ describe("boh", function () {
 			var header = [
 				"/*!boh build: browserify",
 				" * includes:",
-				" *   index.js",
-				" *   User.js*/",
+				" *   - index.js",
+				" *   - User.js*/",
 			].join("\n");
 
 			assert.deepEqual(boh.extractRulesFromHeader(header), expected);
@@ -112,8 +90,8 @@ describe("boh", function () {
 			var header = [
 				"/*!boh build: browserify",
 				" * includes:",
-				" *   index.js",
-				" *   User.js",
+				" *   - index.js",
+				" *   - User.js",
 				" */",
 			].join("\n");
 
@@ -123,44 +101,22 @@ describe("boh", function () {
 
 	describe(".extractRulesFromFile", function () {
 		it("should extract headers from file", function(next) {
-			boh.extractRulesFromFile(path.join(__dirname, "/dir/example.js"), function(err, rules) {
+			var filename = path.join(__dirname, "/dir/example.js");
+			boh.extractRulesFromFile(filename, function(err, rules) {
 				if(err) next(err);
 				else {
 					assert.deepEqual(rules, [{
-						rule: "build",
-						content: " \t\tbrowserify --input $this --output ../lul\n \t\techo \"Hello world!\"\n \t\tpwd"
+						name: "build",
+						content: "browserify --input " + filename + " --output ../lul\necho \"Hello world!\"\npwd\n",
+						file: filename
 					}, {
-						rule: "includes",
-						content: " hurr/durr/foo.js"
+						name: "link",
+						content: "hurr/durr/foo.js",
+						file: filename
 					}]);
 
 					next();
 				}
-			});
-		});
-	});
-
-	describe(".buildIndex", function() {
-		it("should create a new index from the filesystem", function(next) {
-			boh.buildIndex(EXAMPLE_DIR, function(err, index) {
-				if(err) next(err);
-				else {
-					assert(Array.isArray(index.files) && index.files.length, "Has files array.");
-					assert([/example\.js$/, /foo\.js/].every(function(g) { return index.files.some(function(f) { return f.match(g); }); }), "Has files in index.");
-
-					assert(Array.isArray(index.directories) && index.directories.length, "Has directories array");
-					assert([/hurr$/, /durr$/].every(function(g) { return index.directories.some(function(f) { return f.match(g); }); }), "Has directories in index.");
-
-					assert(typeof index.rules === "object", "Has rules object.");
-					next();
-				}
-			});
-		});
-
-		it("should ignore specified paths", function(next) {
-			boh.buildIndex(EXAMPLE_DIR, { ignore: ["*.js"] }, function(err, index) {
-				if(err) next(err);
-				else next();
 			});
 		});
 	});
@@ -184,17 +140,22 @@ describe("boh", function () {
 		});
 	});
 
-	describe(".build", function () {
+	describe("boh.Builder", function () {
 		var index;
 		before(function(done) {
-			boh.buildIndex(EXAMPLE_DIR + "/hurr/durr", function(err, _index) {
+			var indexer = new boh.Indexer();
+			indexer.index(EXAMPLE_DIR + "/hurr/durr", function(err, _index) {
 				index = _index;
 				done();
 			});
 		});
 
 		it("should build an index", function(done) {
-			boh.build(index, function(err, output) {
+			var builder = new boh.Builder();
+
+			assert(builder instanceof require("events").EventEmitter);
+
+			builder.build(index, function(err, output) {
 				assert(Array.isArray(output));
 				done();
 			});
@@ -224,16 +185,6 @@ describe("boh", function () {
 			var output = boh.format("Hello %world!", { world: "Batman" }, "%");
 			
 			assert.equal(output, "Hello Batman!");
-		});
-	});
-
-	describe("Index", function () {
-		describe("#relative", function () {
-			it("should return a relative path", function() {
-				var index = new boh.Index("/a/b/c");
-
-				assert.equal(index.relative("/a/b/c/file.txt"), "file.txt");
-			});
 		});
 	});
 

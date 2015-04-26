@@ -101,13 +101,17 @@ function run(dir) {
 			var options = {}, value;
 
 			// Ignore option. Supports micromatch (https://www.npmjs.com/package/micromatch)
-			if(value = option("--ignore")) options.ignore = value.split(",").map(function(p) { return p.trim(); });
+			if(value = option("--ignore")) options.ignore = value.split(",").map(function(p) { return relative(p.trim()); });
 
 			callback(null, options);
 		},
 
 		// Build the index
-		boh.buildIndex.bind(boh, dir),
+		function(options, callback) {
+			var indexer = new boh.Indexer();
+
+			indexer.index(dir, options, callback);
+		},
 
 		function(index, callback) {
 			var verbose = option("-v");
@@ -119,7 +123,7 @@ function run(dir) {
 			var builder = new boh.Builder();
 
 			builder.on("rule", function(plugin, rule) {
-				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.cyan,
+				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.cyan,
 					x, y;
 
 				plugin.on("start", function() {
@@ -145,11 +149,11 @@ function run(dir) {
 
 			var errors = [];
 			builder.on("error", function(err, rule) {
-				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.rule.red;
+				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.red;
 
 				switch(err.code) {
 					case "PLUGIN_NOT_FOUND":
-						log("\n" + TAB + descriptor + " -> Plugin " + rule.rule.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.rule).blue);
+						log("\n" + TAB + descriptor + " -> Plugin " + rule.name.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.name).blue);
 					break;
 				}
 
@@ -184,7 +188,8 @@ function relative(dir) {
  * @param  {String} dir Path.
  */
 function index(dir) {
-	boh.buildIndex(relative(dir), function(err, index) {
+	var indexer = new boh.Indexer();
+	indexer.index(relative(dir), function(err, index) {
 		if(err) fail(err);
 		else index.toString().split("\n").forEach(function(line) { log(line); });
 	});

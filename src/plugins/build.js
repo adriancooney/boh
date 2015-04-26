@@ -4,6 +4,8 @@ var boh = require("../boh"),
 module.exports = new boh.Plugin(function run(rule, index, callback) {
 	var script = rule.content;
 
+	if(typeof script !== "string") throw new Error("The build rule requires a string.");
+
 	// Log the input
 	script.split("\n")
 		.map(function(l) { return l.trim(); })

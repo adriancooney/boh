@@ -6,7 +6,8 @@ var fs = require("fs"),
 	debug = require("debug")("boh"),
 	colors = require("colors"),
 	async = require("async"),
-	micromatch = require("micromatch");
+	micromatch = require("micromatch"),
+	yaml = require("js-yaml");
 
 var boh = {};
 
@@ -102,52 +103,19 @@ boh.extractHeader = function(string) {
 };
 
 /**
- * Extract rules from a string. Example:
- *
- * 		"build: browserify" -> [{ rule: "build", content: "browserify"}]
- *
- * 		"build:
- * 			browserify
- * 			uglify"
- * 		-> [{ rule: "build", content: "    browserify\n    uglify" }]
- *
- * 		"build: browserify
- * 		 links: User.js"
- * 		-> [{ rule: "build", content: "browserify"}, { rule: "links", content: "User.js"}]
+ * Extract rules from an input YAML string. 
  * 		
  * @param  {String} string String with rules.
- * @return {Array}         [{ rule {String}, content {String} }]
+ * @return {Array}         [{ name {String}, content {String} }]
  */
 boh.extractRules = function(string) {
-	var state = string.split("\n").reduce(function(state, line, i) {
-		if(line.match(/\s*(\w+):(.*)/)) { // Match <word>:<anything..+>
-			// Save the multiline if any
-			if(state.multiline) {
-				state.rules.push({ rule: state.multilineRule, content: state.multilineContent.join("\n") });
-				state.multiline = false;
-			}
+	// Parse the YAML header
+	var data = yaml.safeLoad(string);
 
-			if(!RegExp.$2.trim()) { // Remember, matches empty string!
-				// Start a multiline match
-				state.multiline = true;
-				state.multilineRule = RegExp.$1;
-				state.multilineContent = [];
-			} else if(RegExp.$2) {
-				// We have content on the same line, that's our rule
-				state.rules.push({ rule: RegExp.$1, content: RegExp.$2 })
-			}
-		} else if(state.multiline) {
-			// If were currently in an multiline rule, push the line to it
-			state.multilineContent.push(line);
-		}
-
-		return state;
-	}, { rules: [] });
-
-	// Make sure we don't leave a multiline rule hanging!
-	if(state.multiline) state.rules.push({ rule: state.multilineRule, content: state.multilineContent.join("\n") });
-
-	return state.rules;
+	return Object.keys(data).reduce(function(rules, rule) {
+		rules.push({ name: rule, content: data[rule] });
+		return rules;
+	}, []);
 };
 
 /**
@@ -171,245 +139,28 @@ boh.extractRulesFromFile = function(file, callback) {
 		fs.readFile.bind(fs, file, "utf8"), // Read the contents of the file. Little dissapointed I'm buffering the whole thing. Streams, Adrian, streams.
 
 		function(contents, callback) {
-			callback(null, boh.extractRulesFromHeader(contents));
-		},
+			// Extract the header
+			var header = boh.extractHeader(contents);
 
-		function(rules, callback) {
-			// Add a reference to the file the rules was extracted from
-			rules.forEach(function(rule) {
-				rule.file = file;
-			});
+			if(header) {
+				// Format any meta variables wuch as $this or $dir
+				header = boh.format(header, {
+					"this": file,
+					"dir": path.dirname(file)
+				});
 
-			callback(null, rules);
+				// Parse the YAML header and return
+				var rules = boh.extractRules(header);
+
+				// Add a reference to the file the rules was extracted from
+				rules.forEach(function(rule) {
+					rule.file = file;
+				});
+
+				callback(null, rules);
+			} else callback(null, []);
 		}
 	], callback);
-};
-
-/**
- * Build the boh index from a directory.
- * @param  {String} directory /path/to/directory
- * @param  {Function} callback (err, index {Index})
- */
-boh.buildIndex = function(directory, options, callback) {
-	var debug = require("debug")("boh:index"), // Override debug
-		index = new boh.Index(directory);
-
-	if(typeof options === "function") callback = options, options = null;
-
-	// Merge the options
-	options = Object.keys(options || {}).reduce(function(object, option) {
-		object[option] = options[option];
-		return object;
-	}, {
-		ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
-	});
-
-	// Push the ignores
-	index.ignore("indexing", options.ignore);
-
-	debug("Building index for %s.", directory);
-	debug("Ignoring %s.", options.ignore.join(", ").magenta);
-
-	(function dive(directory, callback) {
-		async.waterfall([
-			fs.readdir.bind(fs, directory), // Read the directory
-
-			// Iterate over each entry in the directory
-			function(entries, callback) {
-				async.eachSeries(entries, function(entry, callback) {
-					entry = path.join(directory, entry);
-
-					// Make sure this path is included and not being ignored
-					if(index.ignoring(entry)) {
-						debug(("Ignoring " + entry).blue);
-						return callback();
-					}
-
-					// Check the type of entry (dir or file?)
-					async.waterfall([
-						fs.stat.bind(fs, entry), // Stat the entry
-
-						function(stat, callback) {
-							// If it's a directory, recurse down
-							if(stat.isDirectory()) {
-								debug(entry.red);
-
-								// Add it to the index
-								index.addDirectory(entry);
-
-								// And go again.
-								return dive(entry, callback);
-							} else {
-								// We have a file
-								debug(entry.yellow);
-								
-								// Add it to the index
-								index.addFile(entry);
-
-								async.waterfall([
-									//Extract the rules from the head of the file
-									boh.extractRulesFromFile.bind(null, entry),
-
-									function(rules, callback) {
-										if(rules.length) {
-											debug("%s rules found.", rules.map(function(rules) {
-												return ("\"" + rules.rule + "\"").blue;
-											}).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
-
-											// Add it to the index
-											index.addRules(entry, rules);
-
-											// And continue
-											callback();
-										} else callback();
-									}
-								], callback);
-							}
-						}
-					], callback);
-				}, callback);
-			}
-		], callback);
-	})(directory, function(err) {
-		if(err) callback(err);
-		else {
-			// Print out the index
-			index.toString().split("\n").forEach(function(line) { debug(line); });
-
-			callback(null, index);
-		}
-	});
-};
-
-/**
- * An index class to describe the file structure.
- */
-boh.Index = function(root) {
-	this.root = root;
-	this.directories = [];
-	this.files = [];
-	this.rules = {};
-	this.links = {};
-
-	this.ignores = {
-		building: [],
-		indexing: []
-	};
-};
-
-/**
- * Add a directory to the index.
- * @param {String} path Directory path.
- */
-boh.Index.prototype.addDirectory = function(path) {
-	this.directories.push(path);
-};
-
-/**
- * Add a file to the index.
- * @param {String} path Path to the file.
- */
-boh.Index.prototype.addFile = function(path) {
-	this.files.push(path);
-};
-
-/**
- * Add rules to the index.
- * @param {String} file  Path to the file where the rules originated from.
- * @param {Array} rules Rules.
- */
-boh.Index.prototype.addRules = function(file, rules) {
-	this.rules[file] = rules;
-};
-
-/**
- * RULE: Enable one file to cover or include another file.
- * @param  {String} owner /path/to/owner/file
- * @param  {String} file  /path/to/file
- */
-boh.Index.prototype.link = function(owner, file) {
-	file = path.resolve(path.dirname(owner), file);
-	debug("%s links %s.", owner.red, file.blue);
-
-	this.links[file] = owner;
-};
-
-/**
- * Ignore paths during different phases.
- * @param  {String} phase    The phase at which to ignore e.g. building, indexing
- * @param  {String|Array} pathspec The paths to ignore.
- */
-boh.Index.prototype.ignore = function(phase, pathspec) {
-	if(!this.ignores[phase]) this.ignores[phase] = [];
-	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this, phase));
-	else this.ignores[phase].push(pathspec);
-}
-
-/**
- * Test whether the index is ignoring a path at a specific phase.
- * @param  {String} phase    The phase name e.g. building, indexing
- * @param  {String} pathname The path to test against.
- * @return {Boolean}         Whether or not the index is ignoring the path.
- */
-boh.Index.prototype.ignoring = function(phase, pathname) {
-	return micromatch.any(pathname, this.ignores[phase] || [], { dot: true });
-};
-
-/**
- * Return the rules associated with a file. If the file
- * is included by another file, then those rules from
- * the parent file will be returned.
- * 
- * @param  {String} file /path/to/file
- * @return {Array}      Array of rules. See .extractRulesFromHeader.
- */
-boh.Index.prototype.getRulesForFile = function(file) {
-	if(this.rules[file]) return this.rules[file];
-	else if(this.links[file]) return this.rules[this.links[file]];
-};
-
-/**
- * Find a specific rule for a file.
- * @param  {String} file /path/to/file
- * @param  {String} rule Rule name.
- * @return {Object}      Rule object. See .extractRulesFromHeader.
- */
-boh.Index.prototype.getRuleForFile = function(file, rule) {
-	return this.getRulesForFile(file).reduce(function(find, value) {
-		if(find !== false) return find;
-		else if(value.rule === rule) return rule;
-		else return false;
-	});
-};
-
-/**
- * Convert to a string.
- * @return {String} 
- */
-boh.Index.prototype.toString = function(fullPath) {
-	var tab = "    ";
-	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
-		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
-		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
-		(Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow + "->" + (fullPath ? file : this.relative(this.links[file])); }, this).join("\n") + "\n" : "") +
-		(Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
-			return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
-				this.rules[file].map(function(rule) {
-					return tab + tab + rule.rule.red + ":\n" +
-						rule.content.split("\n").map(function(line) {
-							return tab + tab + tab + line.trim();
-						}).join("\n");
-				}).join("\n");
-		}, this).join("\n") : "");
-};
-
-/**
- * Return the filepath relative to the root of this index.
- * @param  {[type]} file [description]
- * @return {[type]}      [description]
- */
-boh.Index.prototype.relative = function(file) {
-	return path.relative(this.root, file);
 };
 
 /**
@@ -448,23 +199,6 @@ boh.execute = function(cwd, script, callback) {
 
 	// Create the script file in directory.
 	async.waterfall([
-		// Now were using os.tmpdir() to get the
-		// temporary directory but I'm leaving this in till
-		// it's os.tmpdir() is tested fully.
-		// 
-		// Make sure the temp directory exists
-		// function(callback) {
-		// 	fs.stat(TEMP_DIR, function(err, stat) {
-		// 		if(err && err.code === "ENOENT")
-		// 			async.series([
-		// 				fs.mkdir.bind(fs, TEMP_DIR),
-		// 				fs.chown.bind(fs, TEMP_DIR, process.getuid(), process.getgid())
-		// 			], callback);
-		// 		else if(err) callback(err);
-		// 		else callback();
-		// 	})
-		// },
-
 		// Create the script in the directory
 		fs.writeFile.bind(fs, filename, script),
 
@@ -487,75 +221,6 @@ boh.execute = function(cwd, script, callback) {
 	});
 };
 
-boh.Builder = EventEmitter;
-boh.Builder.prototype = Object.create(EventEmitter.prototype);
-
-/**
- * Run boh on an {boh.Index}. This means, run
- * all the build rules.
- * @param  {String} directory /path/to/directory
- * @return {EventEmitter} -> events { "start" -> (rules, index), "build" -> see .buildRule, "finish" -> (output) }
- */
-boh.Builder.prototype.build = function(index, values, callback) {
-	var debug = require("debug")("boh:build");
-	if(typeof values === "function") callback = values, values = undefined;
-
-	// Collect all the rules from the index into a single array
-	var rules = Object.keys(index.rules).reduce(function(rules, file) {
-		return rules.concat(index.rules[file]);
-	}, []);
-
-	// Add a reference to the emitter and create the output store
-	var emitter = this, output = [];
-
-	debug("Starting the build process.");
-
-	// Only loop over the build rules. nextTick to give them time to bind events
-	async.eachSeries(rules, function(rule, callback) {
-		var relative = index.relative(rule.file);
-
-		// Find the plugin, if it exists
-		var plugin = boh.getPlugin(rule.rule);
-
-		// If the plugin doesn't exist, fail
-		if(!plugin) {
-			var err = new Error("Plugin " + rule.rule + " does not exist.")
-			err.code = "PLUGIN_NOT_FOUND";
-			
-			emitter.emit("error", err, rule);
-			return callback();
-		}
-
-		// Emit the plugin and rule
-		emitter.emit("rule", plugin, rule);
-
-		// Format the rule content
-		rule.content = boh.format(rule.content, {
-			"this": rule.file
-		});
-
-		debug("Running".bold + " %s:%s.", relative.yellow, rule.rule.cyan);
-
-		plugin.execute(rule, index, function(err, built) {
-
-			// Remove any listeners
-			plugin.removeAllListeners();
-
-			// Save the output regardless if it errored or not
-			output.push(err || built);
-			
-			// Continue onto the next
-			callback();
-		});
-	}, function(err) {
-		// Emit the `finish` event
-		emitter.emit("finish", output);
-
-		if(err && callback) callback(err);
-		else if(callback) callback(undefined, output);
-	});
-};
-
 /**
  * Boh plugin store.
  * @type {Object}
@@ -568,8 +233,11 @@ boh.plugins = {};
  * @param  {boh.Plugin} plugin The actual plugin.
  */
 boh.registerPlugin = function(name, plugin) {
+	var phase = plugin.phase || "building";
+	if(!boh.plugins[phase]) boh.plugins[phase] = {};
+
 	debug("Registering plugin %s.", name);
-	boh.plugins[name] = plugin;
+	boh.plugins[phase][name] = plugin;
 };
 
 /**
@@ -577,8 +245,8 @@ boh.registerPlugin = function(name, plugin) {
  * @param  {String} name The name of the plugin.
  * @return {boh.Plugin}
  */
-boh.getPlugin = function(name) {
-	return boh.plugins[name];
+boh.getPlugin = function(phase, name) {
+	if(boh.plugins[phase]) return boh.plugins[phase][name];
 };
 
 /**
@@ -669,67 +337,13 @@ boh.getPackageJSON = function(dir, callback) {
 	})
 };
 
-/**
- * Create a new plugin.
- * @param {String} name   The unique name of the plugin.
- * @param {Function} runner The plugin runner (rule, callback).
- */
-boh.Plugin = function(runner) {
-	EventEmitter.call(this);
-	this.runner = runner;
-	this.debug = require("debug")("boh:plugin");
-	this.log = this.emit.bind(this, "log");
-};
-
-// Inherit from the EventEmitter
-boh.Plugin.prototype = Object.create(EventEmitter.prototype);
-
-/**
- * Execute the plugin.
- * @param  {Object}   rule     Rule sent with { file, content }
- * @param  {Function} callback 
- */
-boh.Plugin.prototype.execute = function(rule, index, callback) {
-	// Tell the outside world the plugin is starting
-	this.emit("start", rule);
-
-	this.debug("Starting execution.");
-
-	try {
-		rule.timeStart = Date.now();
-
-		// Execute the plugin
-		this.runner.call(this, rule, index, function(err, output) {
-			// Add some perf information
-			rule.timeEnd = Date.now();
-			rule.duration = rule.timeEnd - rule.timeStart;
-
-			if(err) {
-				this.debug("Execution Error: ", err);
-				this.emit("error", err);
-			} else {
-				rule.output = output;
-				this.debug("Execution Complete.".green);
-				this.emit("finish", rule);
-			}
-
-			callback(err, rule);
-		}.bind(this))
-	} catch (err) {
-		// Add timing information on fail
-		rule.timeEnd = Date.now();
-		rule.duration = rule.timeEnd - rule.timeStart;
-
-		// Emit and log the debug error
-		this.debug("Execution Error: ", err);
-		this.emit("error", err);
-
-		// Continue with the callback
-		callback(err);
-	}
-};
-
 module.exports = boh;
+
+// Export different components
+boh.Plugin = require("./Plugin");
+boh.Index = require("./Index");
+boh.Indexer = require("./Indexer");
+boh.Builder = require("./Builder");
 
 // Require the packaged plugins in plugins/ and manually register them
 fs.readdirSync(path.join(__dirname, "plugins")).forEach(function(plugin) {
