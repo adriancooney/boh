@@ -2,7 +2,6 @@
 
 var path = require("path"),
 	fs = require("fs"),
-	map = require("fn.map"),
 	async = require("async"),
 	colors = require("colors"),
 	boh = require("../"),
@@ -140,7 +139,7 @@ function run(dir) {
 						return !!line;
 					}).map(function(line) {
 						return TAB + TAB + "-> ".red + line;
-					}).forEach(map(log, null, map.$1));
+					}).forEach(function(line) { log(line) });
 				});
 			});
 
@@ -187,7 +186,7 @@ function relative(dir) {
 function index(dir) {
 	boh.buildIndex(relative(dir), function(err, index) {
 		if(err) fail(err);
-		else index.toString().split("\n").forEach(map(log, null, map.$1));
+		else index.toString().split("\n").forEach(function(line) { log(line); });
 	});
 }
 

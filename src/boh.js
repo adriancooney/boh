@@ -6,7 +6,6 @@ var fs = require("fs"),
 	debug = require("debug")("boh"),
 	colors = require("colors"),
 	async = require("async"),
-	map = require("fn.map"),
 	micromatch = require("micromatch");
 
 var boh = {};
@@ -205,6 +204,9 @@ boh.buildIndex = function(directory, options, callback) {
 		ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
 	});
 
+	// Push the ignores
+	index.ignore("indexing", options.ignore);
+
 	debug("Building index for %s.", directory);
 	debug("Ignoring %s.", options.ignore.join(", ").magenta);
 
@@ -213,58 +215,60 @@ boh.buildIndex = function(directory, options, callback) {
 			fs.readdir.bind(fs, directory), // Read the directory
 
 			// Iterate over each entry in the directory
-			map(async.eachSeries, async, map.$1, function(entry, callback) {
-				entry = path.join(directory, entry);
+			function(entries, callback) {
+				async.eachSeries(entries, function(entry, callback) {
+					entry = path.join(directory, entry);
 
-				// Make sure this path is included and not being ignored
-				if(micromatch.any(entry, options.ignore, { dot: true })) {
-					debug(("Ignoring " + entry).blue);
-					return callback();
-				}
-
-				// Check the type of entry (dir or file?)
-				async.waterfall([
-					fs.stat.bind(fs, entry), // Stat the entry
-
-					function(stat, callback) {
-						// If it's a directory, recurse down
-						if(stat.isDirectory()) {
-							debug(entry.red);
-
-							// Add it to the index
-							index.addDirectory(entry);
-
-							// And go again.
-							return dive(entry, callback);
-						} else {
-							// We have a file
-							debug(entry.yellow);
-							
-							// Add it to the index
-							index.addFile(entry);
-
-							async.waterfall([
-								//Extract the rules from the head of the file
-								boh.extractRulesFromFile.bind(null, entry),
-
-								function(rules, callback) {
-									if(rules.length) {
-										debug("%s rules found.", rules.map(function(rules) {
-											return ("\"" + rules.rule + "\"").blue;
-										}).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
-
-										// Add it to the index
-										index.addRules(entry, rules);
-
-										// And continue
-										callback();
-									} else callback();
-								}
-							], callback);
-						}
+					// Make sure this path is included and not being ignored
+					if(index.ignoring(entry)) {
+						debug(("Ignoring " + entry).blue);
+						return callback();
 					}
-				], callback);
-			}, map.$2)
+
+					// Check the type of entry (dir or file?)
+					async.waterfall([
+						fs.stat.bind(fs, entry), // Stat the entry
+
+						function(stat, callback) {
+							// If it's a directory, recurse down
+							if(stat.isDirectory()) {
+								debug(entry.red);
+
+								// Add it to the index
+								index.addDirectory(entry);
+
+								// And go again.
+								return dive(entry, callback);
+							} else {
+								// We have a file
+								debug(entry.yellow);
+								
+								// Add it to the index
+								index.addFile(entry);
+
+								async.waterfall([
+									//Extract the rules from the head of the file
+									boh.extractRulesFromFile.bind(null, entry),
+
+									function(rules, callback) {
+										if(rules.length) {
+											debug("%s rules found.", rules.map(function(rules) {
+												return ("\"" + rules.rule + "\"").blue;
+											}).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
+
+											// Add it to the index
+											index.addRules(entry, rules);
+
+											// And continue
+											callback();
+										} else callback();
+									}
+								], callback);
+							}
+						}
+					], callback);
+				}, callback);
+			}
 		], callback);
 	})(directory, function(err) {
 		if(err) callback(err);
@@ -286,6 +290,11 @@ boh.Index = function(root) {
 	this.files = [];
 	this.rules = {};
 	this.links = {};
+
+	this.ignores = {
+		building: [],
+		indexing: []
+	};
 };
 
 /**
@@ -323,6 +332,27 @@ boh.Index.prototype.link = function(owner, file) {
 	debug("%s links %s.", owner.red, file.blue);
 
 	this.links[file] = owner;
+};
+
+/**
+ * Ignore paths during different phases.
+ * @param  {String} phase    The phase at which to ignore e.g. building, indexing
+ * @param  {String|Array} pathspec The paths to ignore.
+ */
+boh.Index.prototype.ignore = function(phase, pathspec) {
+	if(!this.ignores[phase]) this.ignores[phase] = [];
+	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this, phase));
+	else this.ignores[phase].push(pathspec);
+}
+
+/**
+ * Test whether the index is ignoring a path at a specific phase.
+ * @param  {String} phase    The phase name e.g. building, indexing
+ * @param  {String} pathname The path to test against.
+ * @return {Boolean}         Whether or not the index is ignoring the path.
+ */
+boh.Index.prototype.ignoring = function(phase, pathname) {
+	return micromatch.any(pathname, this.ignores[phase] || [], { dot: true });
 };
 
 /**
