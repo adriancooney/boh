@@ -14,6 +14,13 @@ var path = require("path"),
 const TAB = "    ";
 const BOH = "boh".bgBlack.blue.bold;
 
+/**
+ * Import the default reporter.
+ * TODO: Custom reporters.
+ * @type {Function}
+ */
+var reporter = require("../src/reporters/default")
+
 /*
  * Print out the help.
  */
@@ -315,50 +322,17 @@ function isOption(string) {
  */
 function buildReporter(verbose, dir) {
     // Create the build reporter
-    var builder = new boh.Builder(),
-        errors = [];
+    var builder = new boh.Builder()
 
-    builder.on("rule", function(plugin, rule) {
-        var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.cyan,
-            x, y;
-
-        plugin.on("start", function() {
-            logRaw("\n" + TAB + descriptor + (verbose ? "\n" : ""));
-        });
-
-        if(verbose) plugin.on("log", log.bind(null, TAB + TAB));
-
-        plugin.on("error", function(err) {
-            errors.push(err);
-            logRaw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-        });
-
-        plugin.on("finish", function(rule) {
-            logRaw((verbose ? TAB + descriptor : "") + (" ✓ (" + rule.duration + "ms)").green + "\n");
-
-            if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
-                return !!line;
-            }).map(function(line) {
-                return TAB + TAB + "-> ".red + line;
-            }).forEach(function(line) { log(line) });
-        });
-    });
-    
-    builder.on("error", function(err, rule) {
-        var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.red;
-
-        switch(err.code) {
-            case "PLUGIN_NOT_FOUND":
-                log("\n" + TAB + descriptor + " -> Plugin " + rule.name.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.name).blue);
-            break;
-        }
-
-        errors.push([err, rule]);
-    })
-
-    builder.on("finish", function() {
-        log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
-    });
+    // Create the reporter
+    reporter.call(null, {
+        log: log,
+        raw: logRaw,
+        fail: fail,
+        option: option,
+        indent: indent,
+        relative: relative
+    }, builder, verbose, dir);
 
     return builder;
 }
