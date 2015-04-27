@@ -1,19 +1,19 @@
 var path = require("path"),
-	boh = require("./boh"),
-	micromatch = require("micromatch"),
-	async = require("async"),
-	debug = require("debug")("boh:index");
+    boh = require("./boh"),
+    micromatch = require("micromatch"),
+    async = require("async"),
+    debug = require("debug")("boh:index");
 
 /**
  * An index class to describe the file structure.
  */
 var Index = function(root) {
-	this.root = root;
-	this.directories = [];
-	this.files = [];
-	this.ignored = [];
-	this.rules = {};
-	this.links = {};
+    this.root = root;
+    this.directories = [];
+    this.files = [];
+    this.ignored = [];
+    this.rules = {};
+    this.links = {};
 };
 
 /**
@@ -21,7 +21,7 @@ var Index = function(root) {
  * @param {String} path Directory path.
  */
 Index.prototype.addDirectory = function(path) {
-	this.directories.push(path);
+    this.directories.push(path);
 };
 
 /**
@@ -29,62 +29,62 @@ Index.prototype.addDirectory = function(path) {
  * @param {String} path Path to the file.
  */
 Index.prototype.addFile = function(entry, callback) {
-	var self = this;
+    var self = this;
 
-	// Push the file
-	if(this.files.indexOf(entry) === -1) this.files.push(entry);
+    // Push the file
+    if(this.files.indexOf(entry) === -1) this.files.push(entry);
 
-	// Get the rules from the file
-	async.waterfall([
-		//Extract the rules from the head of the file
-		boh.extractRulesFromFile.bind(null, entry),
+    // Get the rules from the file
+    async.waterfall([
+        //Extract the rules from the head of the file
+        boh.extractRulesFromFile.bind(null, entry),
 
-		function(rules, callback) {
-			if(rules.length) {
-				debug("%s rules found.", rules.map(function(rules) {
-					return ("\"" + rules.rule + "\"").blue;
-				}).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
+        function(rules, callback) {
+            if(rules.length) {
+                debug("%s rules found.", rules.map(function(rules) {
+                    return ("\"" + rules.rule + "\"").blue;
+                }).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
 
-				// Check to see if any of the rules are run at
-				// the indexing phase. If any are applied, remove
-				// them.
-				async.filter(rules, function(rule, filterCallback) {
-					var plugin = boh.getPlugin("indexing", rule.name)
+                // Check to see if any of the rules are run at
+                // the indexing phase. If any are applied, remove
+                // them.
+                async.filter(rules, function(rule, filterCallback) {
+                    var plugin = boh.getPlugin("indexing", rule.name)
 
-					if(plugin && plugin.phase === "indexing") {
+                    if(plugin && plugin.phase === "indexing") {
 
-						// Format the rule content
-						rule.content = boh.format(rule.content, {
-							"this": rule.file
-						});
+                        // Format the rule content
+                        rule.content = boh.format(rule.content, {
+                            "this": rule.file
+                        });
 
-						debug("Running".bold + " %s:%s.", self.relative(rule.file).yellow, rule.name.cyan);
+                        debug("Running".bold + " %s:%s.", self.relative(rule.file).yellow, rule.name.cyan);
 
-						plugin.execute(rule, self, function(err, built) {
-							// Remove any listeners
-							plugin.removeAllListeners();
-							
-							// I think it's fucking ridiculous async doesn't allow
-							// passing errors in it's filter function. It's to keep
-							// it in line with fs.exists API callback style of truthy
-							// value as the first parameter. First of all, fs.exists
-							// "will be deprecated." (IT'S WRITTEN IN THE DAMN DOCS)
-							// Secondly, ONE function in the ENTIRE NODE.JS API uses
-							// this callback style so you decide to throw out the
-							// callback style of THE REST OF THE ENTIRE ASYNC API?
-							if(err) callback(err);
-							else filterCallback(false);
-						});
-					} else filterCallback(true);
-				}, function(rules) {
-					// Add entry to the index
-					self.addRules(entry, rules);
+                        plugin.execute(rule, self, function(err, built) {
+                            // Remove any listeners
+                            plugin.removeAllListeners();
+                            
+                            // I think it's fucking ridiculous async doesn't allow
+                            // passing errors in it's filter function. It's to keep
+                            // it in line with fs.exists API callback style of truthy
+                            // value as the first parameter. First of all, fs.exists
+                            // "will be deprecated." (IT'S WRITTEN IN THE DAMN DOCS)
+                            // Secondly, ONE function in the ENTIRE NODE.JS API uses
+                            // this callback style so you decide to throw out the
+                            // callback style of THE REST OF THE ENTIRE ASYNC API?
+                            if(err) callback(err);
+                            else filterCallback(false);
+                        });
+                    } else filterCallback(true);
+                }, function(rules) {
+                    // Add entry to the index
+                    self.addRules(entry, rules);
 
-					callback(null, entry, rules);
-				});
-			} else callback();
-		}
-	], callback);
+                    callback(null, entry, rules);
+                });
+            } else callback();
+        }
+    ], callback);
 };
 
 /**
@@ -93,7 +93,7 @@ Index.prototype.addFile = function(entry, callback) {
  * @param {Array} rules Rules.
  */
 Index.prototype.addRules = function(file, rules) {
-	this.rules[file] = rules;
+    this.rules[file] = rules;
 };
 
 /**
@@ -102,11 +102,11 @@ Index.prototype.addRules = function(file, rules) {
  * @param  {String} file  /path/to/file
  */
 Index.prototype.link = function(owner, pathname) {
-	if(Array.isArray(pathname)) pathname.forEach(this.link.bind(this, owner));
-	else {
-		var file = path.resolve(path.dirname(owner), pathname);
-		this.links[file] = owner;
-	}
+    if(Array.isArray(pathname)) pathname.forEach(this.link.bind(this, owner));
+    else {
+        var file = path.resolve(path.dirname(owner), pathname);
+        this.links[file] = owner;
+    }
 };
 
 /**
@@ -115,8 +115,8 @@ Index.prototype.link = function(owner, pathname) {
  * @param  {String|Array} pathspec The paths to ignore.
  */
 Index.prototype.ignore = function(pathspec) {
-	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this));
-	else if(this.ignored.indexOf(pathspec) === -1) this.ignored.push(pathspec);
+    if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this));
+    else if(this.ignored.indexOf(pathspec) === -1) this.ignored.push(pathspec);
 };
 
 /**
@@ -126,7 +126,7 @@ Index.prototype.ignore = function(pathspec) {
  * @return {Boolean}         Whether or not the index is ignoring the path.
  */
 Index.prototype.ignoring = function(pathname) {
-	return micromatch.any(pathname, this.ignored, { dot: true });
+    return micromatch.any(pathname, this.ignored, { dot: true });
 };
 
 /**
@@ -138,13 +138,13 @@ Index.prototype.ignoring = function(pathname) {
  * @return {Array}      Array of rules. See .extractRulesFromHeader.
  */
 Index.prototype.getRulesForFile = function(file) {
-	if(this.rules[file]) return this.rules[file];
-	else if(Object.keys(this.links).some(function(link) {
-		if(micromatch.isMatch(file, link, { dot: true })) {
-			file = this.links[link];
-			return true;
-		}
-	}, this)) return this.rules[file];
+    if(this.rules[file]) return this.rules[file];
+    else if(Object.keys(this.links).some(function(link) {
+        if(micromatch.isMatch(file, link, { dot: true })) {
+            file = this.links[link];
+            return true;
+        }
+    }, this)) return this.rules[file];
 };
 
 /**
@@ -154,11 +154,11 @@ Index.prototype.getRulesForFile = function(file) {
  * @return {Object}      Rule object. See .extractRulesFromHeader.
  */
 Index.prototype.getRuleForFile = function(file, rule) {
-	return this.getRulesForFile(file).reduce(function(find, value) {
-		if(find !== false) return find;
-		else if(value.rule === rule) return rule;
-		else return false;
-	});
+    return this.getRulesForFile(file).reduce(function(find, value) {
+        if(find !== false) return find;
+        else if(value.rule === rule) return rule;
+        else return false;
+    });
 };
 
 /**
@@ -167,26 +167,26 @@ Index.prototype.getRuleForFile = function(file, rule) {
  * @return {String} 
  */
 Index.prototype.toString = function(fullPath) {
-	var tab = "    ";
-	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
-		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
-		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
-		(this.ignored.length ? "Ignoring:\n" + tab + this.ignored.map(function(pathname) { 
-			return this.relative(pathname); 
-		}, this).join("\n" + tab) + "\n" : "") + 
-		(Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { 
-			return tab + (fullPath ? file : this.relative(file)).yellow + " -> " + 
-				(fullPath ? file : this.relative(this.links[file])); 
-		}, this).join("\n") + "\n" : "") +
-		(Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
-			return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
-				this.rules[file].map(function(rule) {
-					return tab + tab + rule.name.red + ":\n" +
-						(typeof rule.content !== "string" ? JSON.stringify(rule.content, null, 2) : rule.content).split("\n").map(function(line) {
-							return tab + tab + tab + line.trim();
-						}).join("\n");
-				}).join("\n");
-		}, this).join("\n") : "");
+    var tab = "    ";
+    return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
+        (this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
+        (this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
+        (this.ignored.length ? "Ignoring:\n" + tab + this.ignored.map(function(pathname) { 
+            return this.relative(pathname); 
+        }, this).join("\n" + tab) + "\n" : "") + 
+        (Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { 
+            return tab + (fullPath ? file : this.relative(file)).yellow + " -> " + 
+                (fullPath ? file : this.relative(this.links[file])); 
+        }, this).join("\n") + "\n" : "") +
+        (Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
+            return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
+                this.rules[file].map(function(rule) {
+                    return tab + tab + rule.name.red + ":\n" +
+                        (typeof rule.content !== "string" ? JSON.stringify(rule.content, null, 2) : rule.content).split("\n").map(function(line) {
+                            return tab + tab + tab + line.trim();
+                        }).join("\n");
+                }).join("\n");
+        }, this).join("\n") : "");
 };
 
 /**
@@ -195,7 +195,7 @@ Index.prototype.toString = function(fullPath) {
  * @return {[type]}      [description]
  */
 Index.prototype.relative = function(file) {
-	return path.relative(this.root, file);
+    return path.relative(this.root, file);
 };
 
 module.exports = Index;
