@@ -315,7 +315,8 @@ function isOption(string) {
  */
 function buildReporter(verbose, dir) {
 	// Create the build reporter
-	var builder = new boh.Builder();
+	var builder = new boh.Builder(),
+		errors = [];
 
 	builder.on("rule", function(plugin, rule) {
 		var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.cyan,
@@ -328,6 +329,7 @@ function buildReporter(verbose, dir) {
 		if(verbose) plugin.on("log", log.bind(null, TAB + TAB));
 
 		plugin.on("error", function(err) {
+			errors.push(err);
 			logRaw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
 		});
 
@@ -341,8 +343,7 @@ function buildReporter(verbose, dir) {
 			}).forEach(function(line) { log(line) });
 		});
 	});
-
-	var errors = [];
+	
 	builder.on("error", function(err, rule) {
 		var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.red;
 
