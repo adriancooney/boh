@@ -11,7 +11,7 @@ var Index = function(root) {
 	this.root = root;
 	this.directories = [];
 	this.files = [];
-	this.ignores = [];
+	this.ignored = [];
 	this.rules = {};
 	this.links = {};
 };
@@ -32,7 +32,7 @@ Index.prototype.addFile = function(entry, callback) {
 	var self = this;
 
 	// Push the file
-	this.files.push(entry);
+	if(this.files.indexOf(entry) === -1) this.files.push(entry);
 
 	// Get the rules from the file
 	async.waterfall([
@@ -116,7 +116,7 @@ Index.prototype.link = function(owner, pathname) {
  */
 Index.prototype.ignore = function(pathspec) {
 	if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this));
-	else if(this.ignores.indexOf(pathspec) === -1) this.ignores.push(pathspec);
+	else if(this.ignored.indexOf(pathspec) === -1) this.ignored.push(pathspec);
 };
 
 /**
@@ -126,7 +126,7 @@ Index.prototype.ignore = function(pathspec) {
  * @return {Boolean}         Whether or not the index is ignoring the path.
  */
 Index.prototype.ignoring = function(pathname) {
-	return micromatch.any(pathname, this.ignores, { dot: true });
+	return micromatch.any(pathname, this.ignored, { dot: true });
 };
 
 /**
@@ -139,7 +139,12 @@ Index.prototype.ignoring = function(pathname) {
  */
 Index.prototype.getRulesForFile = function(file) {
 	if(this.rules[file]) return this.rules[file];
-	else if(this.links[file]) return this.rules[this.links[file]];
+	else if(Object.keys(this.links).some(function(link) {
+		if(micromatch.isMatch(file, link, { dot: true })) {
+			file = this.links[link];
+			return true;
+		}
+	}, this)) return this.rules[file];
 };
 
 /**
@@ -166,7 +171,7 @@ Index.prototype.toString = function(fullPath) {
 	return "Stats -> Directories: " + this.directories.length + ", files: " + this.files.length + "\n" +
 		(this.directories.length ? "Directories:\n" + this.directories.map(function(dir) { return tab + (fullPath ? file : this.relative(dir)).red; }, this).join("\n") + "\n" : "") +
 		(this.files.length ? "Files:\n" + this.files.map(function(file) { return tab + (fullPath ? file : this.relative(file)).yellow; }, this).join("\n") + "\n" : "") +
-		(this.ignores.length ? "Ignoring:\n" + tab + this.ignores.map(function(pathname) { 
+		(this.ignored.length ? "Ignoring:\n" + tab + this.ignored.map(function(pathname) { 
 			return this.relative(pathname); 
 		}, this).join("\n" + tab) + "\n" : "") + 
 		(Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { 

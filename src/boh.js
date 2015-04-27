@@ -149,15 +149,17 @@ boh.extractRulesFromFile = function(file, callback) {
 					"dir": path.dirname(file)
 				});
 
-				// Parse the YAML header and return
-				var rules = boh.extractRules(header);
+				try {
+					// Parse the YAML header and return
+					var rules = boh.extractRules(header);
 
-				// Add a reference to the file the rules was extracted from
-				rules.forEach(function(rule) {
-					rule.file = file;
-				});
+					// Add a reference to the file the rules was extracted from
+					rules.forEach(function(rule) {
+						rule.file = file;
+					});
 
-				callback(null, rules);
+					callback(null, rules);
+				} catch(err) { callback(err); }
 			} else callback(null, []);
 		}
 	], callback);

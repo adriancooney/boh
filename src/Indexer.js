@@ -22,7 +22,7 @@ Indexer.prototype.index = function(directory, options, callback) {
 		ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
 	});
 
-	// Push the ignores
+	// Push the ignored
 	index.ignore(options.ignore);
 
 	debug("Building index for %s.", directory);
@@ -67,10 +67,17 @@ Indexer.prototype.index = function(directory, options, callback) {
 								
 
 								// Add it to the index
-								index.addFile(entry, function(err, entry, rules) {
-									if(err) return callback(err);
+								index.addFile(entry, function(err, file, rules) {
+									if(err) {
+										err.file = entry;
+										// If we callback(err), it kills the indexing.
+										// We'll just emit the error. Okay, since 
+										self.emit("error:index", err);
+									} else {
+										// An indentation of 9 tabs Adrian. Not good.
+										self.emit("file", file, rules);
+									}
 
-									self.emit("file", entry, rules);
 									callback(null, entry, rules);
 								});
 							}

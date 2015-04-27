@@ -4,12 +4,15 @@ var path = require("path"),
 	fs = require("fs"),
 	async = require("async"),
 	colors = require("colors"),
+	chokidar = require("chokidar"),
+	debug = require("debug")("boh:cli"),
 	boh = require("../"),
 	config = require("../package.json"),
 	argv = process.argv.slice(2);
 
 // Tab character
 const TAB = "    ";
+const BOH = "boh".bgBlack.blue.bold;
 
 /*
  * Print out the help.
@@ -30,12 +33,46 @@ if(require.main === module) {
 	program({
 		"--version": log.bind(null, config.version),
 
-		"watch": watch,
+		"--watch": watch,
 
-		"help|--help": help,
+		"--help": help,
 
 		"--index": index
 	}, run);
+}
+
+var events = {
+	add: function(index, dir, file, callback) {
+		index.addFile(file, function(err) {
+			if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+			else {
+				log("New file".green + " %s add to the index.", file);
+				if(callback) callback();
+			}
+		});
+	},
+
+	addDir: function(index, dir, directory, callback) {
+		index.addDirectory(directory);
+		if(callback) callback();
+	},
+
+	change: function(index, dir, file, callback) {
+		// Re-add the file in case the rules change
+		index.addFile(file, function(err) {
+			if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+			else {
+				log("%s changed.", file.yellow);
+
+				// Find the rules associated with that file and run them
+				var rules = index.getRulesForFile(file);
+
+				if(rules && rules.length) 
+					// And build the select rules.
+					buildReporter(option("-v"), dir).buildRules(index, rules, callback);
+			}
+		});
+	}
 }
 
 /**
@@ -44,16 +81,39 @@ if(require.main === module) {
  */
 function watch(dir) {
 	if(!dir) dir = process.cwd();
-	log("boh is watching for changes in %s.", dir);
+
+	async.waterfall([
+		run.bind(null, dir),
+
+		function(index, callback) {
+			var cwd = path.relative(process.cwd(), dir);
+			log("\n" + BOH + " is watching for changes in %s.", (!cwd ? "the current directory" : cwd).magenta);
+
+			// Create the chokidar watcher
+			var watcher = chokidar.watch(index.root, { 
+				ignoreInitial: true,
+				ignored: index.ignored, 
+				persistent: true 
+			});
+
+			// Bind the events
+			Object.keys(events).forEach(function(event) {
+				debug("Binding filesystem event %s.", event);
+				watcher.on(event, events[event].bind(null, index, dir));
+			});
+		}
+	])
 }
 
 /**
  * Run boh in a directory.
  * @param  {String} dir The directory to run boh in.
  */
-function run(dir) {
+function run(dir, callback) {
 	// Get the directory from the first argument
 	dir = relative(!isOption(dir) ? dir : null);
+
+	var _index;
 
 	async.waterfall([
 		// Stat the input
@@ -68,7 +128,7 @@ function run(dir) {
 		// Output the directory
 		function(stat, callback) {
 			var cwd = path.relative(process.cwd(), dir);
-			logRaw("Running boh in " + (!cwd ? "the current directory" : cwd).magenta);
+			logRaw("Running " + BOH + " in " + (!cwd ? "the current directory" : cwd).magenta);
 			callback();
 		},
 
@@ -110,65 +170,24 @@ function run(dir) {
 		function(options, callback) {
 			var indexer = new boh.Indexer();
 
+			indexer.on("error:index", function(err) {
+				log(indent(1, relative(err.file).yellow + " -> " + "Index Error".red));
+				log(indent(2, err.message));
+			});
+
 			indexer.index(dir, options, callback);
 		},
 
 		function(index, callback) {
-			var verbose = option("-v");
+			// Save a reference to the index
+			_index = index;
 
-			// Log the index if verbose
-			if(verbose) log(index.toString());
-
-			// Start the build process
-			var builder = new boh.Builder();
-
-			builder.on("rule", function(plugin, rule) {
-				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.cyan,
-					x, y;
-
-				plugin.on("start", function() {
-					logRaw("\n" + TAB + descriptor + (verbose ? "\n" : ""));
-				});
-
-				if(verbose) plugin.on("log", log.bind(null, TAB + TAB));
-
-				plugin.on("error", function(err) {
-					logRaw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-				});
-
-				plugin.on("finish", function(rule) {
-					logRaw((verbose ? "\n" + TAB + descriptor : "") + (" ✓ (" + rule.duration + "ms)").green + "\n");
-
-					if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
-						return !!line;
-					}).map(function(line) {
-						return TAB + TAB + "-> ".red + line;
-					}).forEach(function(line) { log(line) });
-				});
-			});
-
-			var errors = [];
-			builder.on("error", function(err, rule) {
-				var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.red;
-
-				switch(err.code) {
-					case "PLUGIN_NOT_FOUND":
-						log("\n" + TAB + descriptor + " -> Plugin " + rule.name.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.name).blue);
-					break;
-				}
-
-				errors.push([err, rule]);
-			})
-
-			builder.on("finish", function() {
-				log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
-			});
-
-			// Start the build!
-			builder.build(index, callback);
+			// Create the new reporter and build!
+			buildReporter(option("-v"), dir).build(index, callback);
 		}
 	], function(err) {
-		if(err && err.code === "ENOENT") fail("%s does not exist.", dir);
+		if(callback) callback(err, _index);
+		else if(err && err.code === "ENOENT") fail("%s does not exist.", dir);
 		else if(err) fail(err);
 	})
 }
@@ -218,6 +237,20 @@ function log() {
  */
 function logRaw() {
 	process.stdout.write.apply(process.stdout, arguments);
+}
+
+/**
+ * Indent a multi line string.
+ * @param  {Number} level  Indentation level.
+ * @param  {String} string 
+ * @return {String}        Indented string.
+ */
+function indent(level, string) {
+	var indentation = ""; 
+	for(var i = 0; i < level; i++) indentation += TAB;
+	return string.split("\n").map(function(line) {
+		return indentation + line;
+	}).join("\n");
 }
 
 /**
@@ -276,6 +309,61 @@ function isOption(string) {
 	return typeof string === "string" && !!string.match(/^--?\w+$/);
 }
 
+/**
+ * Create a new builder reporter.
+ * @return {boh.Builder} 
+ */
+function buildReporter(verbose, dir) {
+	// Create the build reporter
+	var builder = new boh.Builder();
+
+	builder.on("rule", function(plugin, rule) {
+		var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.cyan,
+			x, y;
+
+		plugin.on("start", function() {
+			logRaw("\n" + TAB + descriptor + (verbose ? "\n" : ""));
+		});
+
+		if(verbose) plugin.on("log", log.bind(null, TAB + TAB));
+
+		plugin.on("error", function(err) {
+			logRaw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+		});
+
+		plugin.on("finish", function(rule) {
+			logRaw((verbose ? TAB + descriptor : "") + (" ✓ (" + rule.duration + "ms)").green + "\n");
+
+			if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
+				return !!line;
+			}).map(function(line) {
+				return TAB + TAB + "-> ".red + line;
+			}).forEach(function(line) { log(line) });
+		});
+	});
+
+	var errors = [];
+	builder.on("error", function(err, rule) {
+		var descriptor = path.relative(dir, rule.file).yellow + ":" + rule.name.red;
+
+		switch(err.code) {
+			case "PLUGIN_NOT_FOUND":
+				log("\n" + TAB + descriptor + " -> Plugin " + rule.name.red + " not found: Try running " + ("npm install --save-dev boh-" + rule.name).blue);
+			break;
+		}
+
+		errors.push([err, rule]);
+	})
+
+	builder.on("finish", function() {
+		log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
+	});
+
+	return builder;
+}
+
+// Exporting for testing.
 module.exports = {
-	option: option
+	option: option,
+	events: events
 };

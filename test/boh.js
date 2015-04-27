@@ -156,8 +156,9 @@ describe("boh", function () {
 			assert(builder instanceof require("events").EventEmitter);
 
 			builder.build(index, function(err, output) {
-				assert(Array.isArray(output));
-				done();
+				console.log(arguments);
+				if(err) done(err);
+				else assert(Array.isArray(output)), done();
 			});
 		});
 	});

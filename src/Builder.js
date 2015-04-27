@@ -16,7 +16,6 @@ var Builder = EventEmitter;
  * @return {EventEmitter} -> events { "start" -> (rules, index), "build" -> see .buildRule, "finish" -> (output) }
  */
 Builder.prototype.build = function(index, callback) {
-
 	// Collect all the rules from the index into a single array
 	var rules = Object.keys(index.rules).reduce(function(rules, file) {
 		return rules.concat(index.rules[file]);
@@ -32,7 +31,7 @@ Builder.prototype.build = function(index, callback) {
  * Build a set of rules.
  * @param  {boh.Index}   index    The file index.
  * @param  {Array}   rules    Array of rules to build.
- * @param  {Function} callback
+ * @param  {Function} callback (index, rules, output)
  */
 Builder.prototype.buildRules = function(index, rules, callback) {
 	// Add a reference to the emitter and create the output store
