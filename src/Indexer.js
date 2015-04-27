@@ -19,7 +19,7 @@ Indexer.prototype.index = function(directory, options, callback) {
         object[option] = options[option];
         return object;
     }, {
-        ignore: ["**/node_modules/*", "**/.git/*", "**/.sass-cache/*"]
+        ignore: ["**/node_modules/**", "**/.git/**", "**/.sass-cache/**"]
     });
 
     // Push the ignored

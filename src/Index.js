@@ -42,7 +42,7 @@ Index.prototype.addFile = function(entry, callback) {
         function(rules, callback) {
             if(rules.length) {
                 debug("%s rules found.", rules.map(function(rules) {
-                    return ("\"" + rules.rule + "\"").blue;
+                    return ("\"" + rules.name + "\"").blue;
                 }).join(", ").replace(/,\s*([^,]+)$/, " and $1"));
 
                 // Check to see if any of the rules are run at
@@ -80,6 +80,9 @@ Index.prototype.addFile = function(entry, callback) {
                     // Add entry to the index
                     self.addRules(entry, rules);
 
+                    // Purge the index
+                    self.purge();
+
                     callback(null, entry, rules);
                 });
             } else callback();
@@ -116,7 +119,34 @@ Index.prototype.link = function(owner, pathname) {
  */
 Index.prototype.ignore = function(pathspec) {
     if(Array.isArray(pathspec)) pathspec.forEach(this.ignore.bind(this));
-    else if(this.ignored.indexOf(pathspec) === -1) this.ignored.push(pathspec);
+    else if(this.ignored.indexOf(pathspec) === -1) {
+        debug("Adding %s to the ignore list.", pathspec.cyan);
+
+        // Push the path into the 
+        this.ignored.push(pathspec);
+    }
+};
+
+/**
+ * Remove any data from the index that is ignored.
+ * @param  {String} pathspec 
+ */
+Index.prototype.purge = function() {
+    // Remove the file from the index if they match
+    this.files = this.files.filter(function(file) { return !this.ignoring(file); }, this);
+
+    // Remove any directories
+    this.directories = this.directories.filter(function(directory) { return !this.ignoring(directory); }, this);
+
+    // Remove any rules
+    Object.keys(this.rules).forEach(function(pathname) {
+        if(this.ignoring(pathname)) delete this.rules[pathname];
+    }, this);
+
+    // Remove any links
+    Object.keys(this.links).forEach(function(pathname) {
+        if(this.ignoring(pathname) || this.ignoring(this.links[pathname])) delete this.links[pathname];
+    }, this);
 };
 
 /**
@@ -186,13 +216,13 @@ Index.prototype.toString = function(fullPath) {
                             return tab + tab + tab + line.trim();
                         }).join("\n");
                 }).join("\n");
-        }, this).join("\n") : "");
+        }, this).filter(function(a) { return !!a }).join("\n") : "");
 };
 
 /**
  * Return the filepath relative to the root of this index.
- * @param  {[type]} file [description]
- * @return {[type]}      [description]
+ * @param  {String} file /path/to/file
+ * @return {String}     
  */
 Index.prototype.relative = function(file) {
     return path.relative(this.root, file);

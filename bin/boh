@@ -53,7 +53,7 @@ var events = {
         index.addFile(file, function(err) {
             if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
             else {
-                log("New file".green + " %s add to the index.", file);
+                log("New file".green + " %s added to the index.", file);
                 if(callback) callback();
             }
         });
@@ -94,7 +94,7 @@ function watch(dir) {
 
         function(index, callback) {
             var cwd = path.relative(process.cwd(), dir);
-            log("\n" + BOH + " is watching for changes in %s.", (!cwd ? "the current directory" : cwd).magenta);
+            log("\n" + BOH + " is watching for changes in %s.\n", (!cwd ? "the current directory" : cwd).magenta);
 
             // Create the chokidar watcher
             var watcher = chokidar.watch(index.root, { 
