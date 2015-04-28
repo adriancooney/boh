@@ -24,26 +24,39 @@ describe("boh.Index", function() {
     describe("#relative", function () {
         it("should return a relative path", function() {
             assert.equal(index.relative("/a/b/c/file.txt"), "file.txt");
+            assert.equal(index.relative("/a/b/c/file.txt", "../e/f.txt"), "/a/b/e/f.txt");
         });
     });
 
-    describe("#link", function() {
+    describe("#linkRelative", function() {
         it("should link with anymatch pattern", function() {
-            index.link("/a/b.js", "*.js");
-            assert(Object.keys(index.links).filter(function(pathname) {
-                return pathname.match(/\*\.js$/);
-            }).length);
+            index.linkRelative("/a/b.js", "*.js");
+            assert.deepEqual(index.links["/a/*.js"], ["/a/b.js"]);
+            index.linkRelative("/a/b/c/d.js", "../src/*.js");
+            assert.deepEqual(index.links["/a/b/src/*.js"], ["/a/b/c/d.js"]);
+            index.linkRelative("/a/b/e/f.js", "../../*.js");
+            assert.deepEqual(index.links["/a/*.js"], ["/a/b.js", "/a/b/e/f.js"]);
+        });
+    });
+
+    describe("#findLinks", function() {
+        it("should find the links", function() {
+            index.linkRelative("/a/b/c/file.js", "src/*.js");
+
+            assert.deepEqual(index.findLinks("/a/b/c/src/a.js"), ["/a/b/c/file.js"]);
+            assert.deepEqual(index.findLinks("/a/f.js"), ["/a/b.js", "/a/b/e/f.js"]);
         });
     });
 
     describe("#getRulesForFile", function() {
         it("should return rules for linked files", function() {
+            index.linkRelative("/a/b.js", "foo/bar/*.js")
             index.addRules("/a/b.js", [{ foo: "bar" }]);
-            var rules1 = index.getRulesForFile("lol.js"),
-                rules2 = index.getRulesForFile("/a/lol.js");
 
-            assert(!rules1);
-            assert(rules2.length);
+            var rules = index.getRulesForFile("/a/foo/bar/lol.js");
+
+            assert(rules.length);
+            assert(rules[0].foo === "bar");
         });
     });
 });

@@ -100,16 +100,49 @@ Index.prototype.addRules = function(file, rules) {
 };
 
 /**
- * RULE: Enable one file to cover or include another file.
- * @param  {String} owner /path/to/owner/file
- * @param  {String} file  /path/to/file
+ * Link one file to another.
+ * @param  {String} owner /path/to/owner/file (Warning: has to be a file!)
+ * @param  {String|Array} pathname  glob or array of globs
  */
-Index.prototype.link = function(owner, pathname) {
-    if(Array.isArray(pathname)) pathname.forEach(this.link.bind(this, owner));
+Index.prototype.link = function(owner, link) {
+    if(Array.isArray(link)) link.forEach(this.link.bind(this, owner));
     else {
-        var file = path.resolve(path.dirname(owner), pathname);
-        this.links[file] = owner;
+        if(this.links[link]) this.links[link].push(owner);
+        else this.links[link] = [owner];
     }
+};
+
+/**
+ * Link a file relative to the owner file's
+ * directory. So linking "/a/b/c/d.js" with
+ * "../src/" will link "/a/b/src/" -> "/a/b/c/d.js".
+ * @param  {String} owner    /path/to/owner/file
+ * @param  {String|Array} pathname glob or array of globs
+ */
+Index.prototype.linkRelative = function(owner, pathname) {
+    return this.link(owner, (Array.isArray(pathname) ? pathname : [pathname]).map(function(pathname) {
+        return this.relative(owner, pathname)
+    }, this));
+};
+
+/**
+ * Given a path, find if it links to another path. For example,
+ * if I `index.link("src/**", "a/b.js")`, `src/a.js`, `src/b/c.js`
+ * and `src/foo.css` should all link to `a/b.js`.
+ * @param  {String} pathname The pathname.
+ * @return {Array}          
+ */
+Index.prototype.findLinks = function(pathname) {
+    if(Object.keys(this.links).some(function(link) {
+        // Test the link, if it matches, return
+        if(micromatch.isMatch(pathname, link, { dot: true })) {
+            // Grab the links
+            pathname = this.links[link];
+            // Stop the loop
+            return true;
+        }
+    }, this)) return pathname;
+    else return [];
 };
 
 /**
@@ -143,9 +176,9 @@ Index.prototype.purge = function() {
         if(this.ignoring(pathname)) delete this.rules[pathname];
     }, this);
 
-    // Remove any links
+    // Remove any links (both keys and values)
     Object.keys(this.links).forEach(function(pathname) {
-        if(this.ignoring(pathname) || this.ignoring(this.links[pathname])) delete this.links[pathname];
+        if(this.ignoring(pathname) || this.links[pathname].some(this.ignoring.bind(this))) delete this.links[pathname];
     }, this);
 };
 
@@ -168,13 +201,10 @@ Index.prototype.ignoring = function(pathname) {
  * @return {Array}      Array of rules. See .extractRulesFromHeader.
  */
 Index.prototype.getRulesForFile = function(file) {
-    if(this.rules[file]) return this.rules[file];
-    else if(Object.keys(this.links).some(function(link) {
-        if(micromatch.isMatch(file, link, { dot: true })) {
-            file = this.links[link];
-            return true;
-        }
-    }, this)) return this.rules[file];
+    if(this.rules[file]) return (this.rules[file] || []);
+    else return this.findLinks(file).reduce(function(rules, pathname) {
+        return rules.concat(this.getRulesForFile(pathname));
+    }.bind(this), []);
 };
 
 /**
@@ -206,7 +236,7 @@ Index.prototype.toString = function(fullPath) {
         }, this).join("\n" + tab) + "\n" : "") + 
         (Object.keys(this.links).length ? "Links:\n" + Object.keys(this.links).map(function(file) { 
             return tab + (fullPath ? file : this.relative(file)).yellow + " -> " + 
-                (fullPath ? file : this.relative(this.links[file])); 
+                (fullPath ? file : this.links[file].map(function(pth) { return this.relative(pth) }, this).join(", ")); 
         }, this).join("\n") + "\n" : "") +
         (Object.keys(this.rules).length ? "Rules:\n" + Object.keys(this.rules).map(function(file) {
             return tab + (fullPath ? file : this.relative(file)).bold + "\n" +
@@ -221,11 +251,19 @@ Index.prototype.toString = function(fullPath) {
 
 /**
  * Return the filepath relative to the root of this index.
- * @param  {String} file /path/to/file
+ * If a second argument is passed, it's relative to the directory
+ * of the file path passed as the first argument.
+ * 
+ * @param  {String} owner /path/to/file
+ * @param {String} file /path/to/another/file
  * @return {String}     
  */
-Index.prototype.relative = function(file) {
-    return path.relative(this.root, file);
+Index.prototype.relative = function(owner, file) {
+    if(!file) return path.relative(this.root, owner);
+    else {
+        // Join the  with the owner directory
+        return path.resolve(path.dirname(owner), "./" + file);
+    }
 };
 
 module.exports = Index;
