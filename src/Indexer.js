@@ -6,8 +6,21 @@ var fs = require("fs"),
     Index = require("./Index"),
     debug = require("debug")("boh:index");
 
-var Indexer = EventEmitter;
+/**
+ * Create a new indexer.
+ */
+var Indexer = function() {
+    EventEmitter.call(this);
+};
 
+Indexer.prototype = Object.create(EventEmitter.prototype);
+
+/**
+ * Index a directory.
+ * @param  {String}   directory Path to directory.
+ * @param  {Object}   options   { ignore = paths to ignore [array] }
+ * @param  {Function} callback  callback(err, index)
+ */
 Indexer.prototype.index = function(directory, options, callback) {
     var index = new Index(directory),
         self = this;
