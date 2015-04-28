@@ -263,18 +263,31 @@ boh.findPlugins = function(base, callback) {
     async.waterfall([
         function(callback) {
             boh.getPackageJSON(base, function(err, packageJSON) {
-                // Require the node modules
+                // Push the dependencies matching boh- into the array
                 if(err) callback(err);
                 else if(packageJSON.dependencies) callback(null, Object.keys(packageJSON.dependencies).filter(isPlugin));
             });
         },
 
         function(plugins, callback) {
+            // Read the global NODE_PATH for any installed plugins
             if(process.env.NODE_PATH) fs.readdir(process.env.NODE_PATH, function(err, entries) {
                 if(err) callback(err);
-                else callback(null, plugins.concat(entries.filter(isPlugin)))
+                else callback(null, plugins.concat(entries.filter(isPlugin).map(function(plugin) { 
+                    plugin = new String(plugin);
+                    plugin.__global = true; // Add a flag to denote the plugin is loaded globally
+                    return plugin;
+                })))
             });
             else callback(plugins);
+        },
+
+        function(plugins, callback) {
+            // Remove any duplicates
+            callback(null, plugins.reduce(function(plugins, plugin) {
+                if(plugins.indexOf(plugin.toString()) === -1) plugins.push(plugin);
+                return plugins;
+            }, []))
         }
     ], callback);
 
@@ -297,15 +310,16 @@ boh.requirePlugins = function(plugins, callback) {
 
             try {
                 var pluginName = plugin.replace(BOH_PLUGIN_PREFIX, ""),
-                    pluginExport = require(plugin);
+                    pluginExport = require(plugin.toString());
 
                 pluginExport.pluginName = pluginName;
-                pluginExport.debug = require("debug")("boh:plugin:" + name);
+                pluginExport.debug = require("debug")("boh:plugin:" + pluginName);
 
                 boh.registerPlugin(pluginName, pluginExport);
                 ee.emit("plugin:loaded", plugin);
             } catch(err) {
-                ee.emit("plugin:error", plugin, err);
+                if(err.code === "MODULE_NOT_FOUND") ee.emit("plugin:error", plugin, err);
+                else ee.emit("error", err);
             }
         });
 
