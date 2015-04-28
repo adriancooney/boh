@@ -8,7 +8,7 @@ var path = require("path"),
     debug = require("debug")("boh:cli"),
     boh = require("../"),
     config = require("../package.json"),
-    argv = process.argv.slice(2);
+    program = require("commander");
 
 // Tab character
 const TAB = "    ";
@@ -19,97 +19,56 @@ const BOH = "boh".bgBlack.blue.bold;
  * TODO: Custom reporters.
  * @type {Function}
  */
-var reporter = require("../src/reporters/default")
+var reporter = require("../src/reporters/default");
 
-/*
- * Print out the help.
+program
+    .version(config.version)
+    .option("--watch", "Watch for changes.")
+    .option("--index", "Print the boh index of a directory.", false)
+    .option("--ignore [paths]", "Paths to ignore in the index (glob).")
+    .option("-v, --verbose", "Log all boh output to the screen.")
+    .arguments("<dir>")
+    .action(function(dir) {
+        program.__executed = true;
+        main(dir);
+    });
+
+/**
+ * Override the default help output
  */
-var help = log.bind(null, function() {/*
-boh - a simple build tool.
+program.outputHelp = function() {
+    log([
+        "",
+        "   " + BOH + " [options]".magenta + " <dir>",
+        "",
+        "     -h, --help        ".magenta + "Output usage information",
+        "     -V, --version     ".magenta + "Output the version number",
+        "     --watch           ".magenta + "Watch for changes.",
+        "     --index           ".magenta + "Print the boh index of a directory.",
+        "     --ignore [paths]  ".magenta + "Paths to ignore in the index (glob).",
+        "     -v, --verbose     ".magenta + "Log all boh output to the screen.",
+        ""
+    ].join("\n"))
+};
 
-    <dir>                   Build the files in <dir> (optional).
-      --include <paths>     Paths to include in index.
-      --ignore <paths>      Paths to ignore in index.
-    watch <dir>             Watch <dir> (optional) for file changes 
-    help                    Print this help screen
-
-    --index <dir>           Print the boh index of a directory.
-*/}.toString().replace(/(^[^\n]*\n)|(\n\*\/\})/g, ""));
-
+// Only run if this file is run directly
 if(require.main === module) {
-    program({
-        "--version": log.bind(null, config.version),
+    // Run the command
+    program.parse(process.argv);
 
-        "--watch": watch,
-
-        "--help": help,
-
-        "--index": index
-    }, run);
-}
-
-var events = {
-    add: function(index, dir, file, callback) {
-        index.addFile(file, function(err) {
-            if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-            else {
-                log("New file".green + " %s added to the index.", file);
-                if(callback) callback();
-            }
-        });
-    },
-
-    addDir: function(index, dir, directory, callback) {
-        index.addDirectory(directory);
-        if(callback) callback();
-    },
-
-    change: function(index, dir, file, callback) {
-        // Re-add the file in case the rules change
-        index.addFile(file, function(err) {
-            if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-            else {
-                log("%s changed.", file.yellow);
-
-                // Find the rules associated with that file and run them
-                var rules = index.getRulesForFile(file);
-
-                if(rules && rules.length) 
-                    // And build the select rules.
-                    buildReporter(option("-v"), dir).buildRules(index, rules, callback);
-            }
-        });
-    }
+    // Pity commander can't specify a default action. This pattern is pretty odd.
+    if(!program.__executed) main();
 }
 
 /**
- * Start boh watching a directory.
- * @param  {String} dir The directory to watch in (optional).
+ * The main entry point for the program.
+ * @param  {String} dir Directory to run in (optional)
  */
-function watch(dir) {
-    if(!dir) dir = process.cwd();
-
-    async.waterfall([
-        run.bind(null, dir),
-
-        function(index, callback) {
-            var cwd = path.relative(process.cwd(), dir);
-            log("\n" + BOH + " is watching for changes in %s.\n", (!cwd ? "the current directory" : cwd).magenta);
-
-            // Create the chokidar watcher
-            var watcher = chokidar.watch(index.root, { 
-                ignoreInitial: true,
-                ignored: index.ignored, 
-                persistent: true 
-            });
-
-            // Bind the events
-            Object.keys(events).forEach(function(event) {
-                debug("Binding filesystem event %s.", event);
-                watcher.on(event, events[event].bind(null, index, dir));
-            });
-        }
-    ])
+function main(dir) {
+    if(program.index) index(dir);
+    else run(dir, function(err, index) {
+        if(program.watch) watch(index);
+    });
 }
 
 /**
@@ -118,7 +77,7 @@ function watch(dir) {
  */
 function run(dir, callback) {
     // Get the directory from the first argument
-    dir = relative(!isOption(dir) ? dir : null);
+    dir = relative(dir);
 
     var _index;
 
@@ -156,19 +115,19 @@ function run(dir, callback) {
             });
 
             emitter.on("plugin:loaded", function(plugin) { 
-                logRaw((plugin + " ✓ ").green); 
+                logRaw((plugin + " ✓ ")[plugin.__global ? "blue" : "green"]); 
             });
 
-            emitter.on("plugin:error", function(plugin) { 
+            emitter.on("plugin:error", function(plugin, err) {
                 logRaw((plugin + " ✘ ").red); 
             });
         },
 
         function(callback) {
-            var options = {}, value;
+            var options = {};
 
             // Ignore option. Supports micromatch (https://www.npmjs.com/package/micromatch)
-            if(value = option("--ignore")) options.ignore = value.split(",").map(function(p) { return relative(p.trim()); });
+            if(program.ignore) options.ignore = program.ignore.split(",").map(function(p) { return relative(p.trim()); });
 
             callback(null, options);
         },
@@ -186,11 +145,13 @@ function run(dir, callback) {
         },
 
         function(index, callback) {
-            // Save a reference to the index
-            _index = index;
+            if(index.files.length) {
+                // Save a reference to the index
+                _index = index;
 
-            // Create the new reporter and build!
-            buildReporter(option("-v"), dir).build(index, callback);
+                // Create the new reporter and build!
+                buildReporter(program.verbose, dir).build(index, callback);
+            } else log("No files found. :(");
         }
     ], function(err) {
         if(callback) callback(err, _index);
@@ -198,6 +159,62 @@ function run(dir, callback) {
         else if(err) fail(err);
     })
 }
+
+/**
+ * Start boh watching a directory.
+ * @param  {boh.Index} index The index to watch.
+ */
+function watch(index) {
+    var cwd = path.relative(process.cwd(), index.root);
+    log("\n" + BOH + " is watching for changes in %s.", (!cwd ? "the current directory" : cwd).magenta);
+
+    // Create the chokidar watcher
+    var watcher = chokidar.watch(index.root, { 
+        ignoreInitial: true,
+        ignored: index.ignored, 
+        persistent: true 
+    });
+
+    // Bind the events
+    Object.keys(events).forEach(function(event) {
+        debug("Binding filesystem event %s.", event);
+        watcher.on(event, events[event].bind(null, index, index.root));
+    });
+}
+
+var events = {
+    add: function(index, dir, file, callback) {
+        index.addFile(file, function(err) {
+            if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+            else {
+                log("New file".green + " %s added to the index.", file);
+                if(callback) callback();
+            }
+        });
+    },
+
+    addDir: function(index, dir, directory, callback) {
+        index.addDirectory(directory);
+        if(callback) callback();
+    },
+
+    change: function(index, dir, file, callback) {
+        // Re-add the file in case the rules change
+        index.addFile(file, function(err) {
+            if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+            else {
+                log("\n%s changed.", file.yellow);
+
+                // Find the rules associated with that file and run them
+                var rules = index.getRulesForFile(file);
+
+                if(rules && rules.length) 
+                    // And build the select rules.
+                    buildReporter(option("-v"), dir).buildRules(index, rules, callback);
+            }
+        });
+    }
+};
 
 /**
  * Return the path of a directory relative to the cwd.
@@ -219,17 +236,6 @@ function index(dir) {
         if(err) fail(err);
         else index.toString().split("\n").forEach(function(line) { log(line); });
     });
-}
-
-/**
- * Load all the plugins from the current directory.
- * @param  {Function} callback 
- */
-function loadPlugins(callback) {
-    async.waterfall([
-        // Find the plugins
-        boh.findPlugins.bind(boh),
-    ], callback);
 }
 
 /**
@@ -275,48 +281,6 @@ function fail() {
 }
 
 /**
- * Create a program that matches arguments.
- * @param  {Object} spec { regex: callback }
- * @param  {Function} defaultAction
- */
-function program(spec, defaultAction) { 
-    var command = argv[0];
-
-    if((!command || !Object.keys(spec).some(function(regex) {
-        var match = command.match(new RegExp(regex));
-        if(match != null && command == match[0]) {
-            spec[regex].apply(null, argv.slice(1));
-            return true;
-        }
-    })) && defaultAction) defaultAction.apply(null, argv); 
-}
-
-/**
- * Return a value for an option passed as a parameter
- * @param  {String} name The name of the option e.g. version
- * @param  {String} shortname The shortname of the options e.g. v (for version)
- * @return {String}      Value.
- */
-function option(name) {
-    var args = Array.prototype.slice.call(arguments),
-        argv = Array.isArray(args[args.length - 1]) ? args.pop().join(" ") : process.argv.join(" "),
-        regex = "(?:" + args.join("|") + ")(?:\\s+|$)";
-
-    if(argv.match(new RegExp(regex + "\"([^\"]+)\""))) return RegExp.$1;
-    else if(argv.match(new RegExp(regex + "([^\\s]+)"))) return RegExp.$1;
-    else if(argv.match(new RegExp(regex))) return true;
-}
-
-/**
- * Test if a string is an option.
- * @param  {String}  string 
- * @return {Boolean}        
- */
-function isOption(string) {
-    return typeof string === "string" && !!string.match(/^--?\w+$/);
-}
-
-/**
  * Create a new builder reporter.
  * @return {boh.Builder} 
  */
@@ -329,7 +293,7 @@ function buildReporter(verbose, dir) {
         log: log,
         raw: logRaw,
         fail: fail,
-        option: option,
+        program: program,
         indent: indent,
         relative: relative
     }, builder, verbose, dir);
@@ -339,6 +303,5 @@ function buildReporter(verbose, dir) {
 
 // Exporting for testing.
 module.exports = {
-    option: option,
     events: events
 };

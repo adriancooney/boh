@@ -7,7 +7,11 @@ var EventEmitter = require("events").EventEmitter,
  * The builder class.
  * @type {EventEmitter}
  */
-var Builder = EventEmitter;
+var Builder = function() {
+    EventEmitter.call(this);
+}
+
+Builder.prototype = Object.create(EventEmitter.prototype);
 
 /**
  * Run boh on an {boh.Index}. This means, run
