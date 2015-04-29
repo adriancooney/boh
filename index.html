@@ -1,9 +1,84 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>boh</title>
+    <title>boh</title>
+    <link rel="stylesheet" href="assets/build/style.css">
 </head>
 <body>
-
+<header>
+    <div class="container">
+        <h1>boh</h1>
+        <h3>A simple build tool.</h3>
+    </div>
+</header>
+<div class="container demo">
+    <div class="grid">
+        <div class="cell">
+            <div class="terminal">
+                <p>$ boh</p>
+                <p>Hello world</p>
+            </div>
+        </div>
+        <div class="cell">
+            <div class="filesystem">
+                <div class="item directory">
+                    <h3><span>project/</span></h3>
+                    <div class="item directory leaf">
+                        <h3><span>build/</span></h3>
+                        <div class="file-list">
+                            <h3 class="file"><span><a href="#">bundle.js</a></span></h3>
+                            <h3 class="file"><span><a href="#">bundle.css</a></span></h3>
+                        </div>
+                    </div>
+                    <div class="item directory leaf">
+                        <h3><span>src/</span></h3>
+                        <div class="file-list">
+                            <h3 class="file"><span><a href="#">index.js</a></span></h3>
+                            <h3 class="file"><span><a href="#">User.js</a></span></h3>
+                        </div>
+                    </div>
+                    <div class="item directory leaf">
+                        <h3><span>style/</span></h3>
+                        <div class="file-list">
+                            <h3 class="file"><span><a href="#">style.scss</a></span></h3>
+                        </div>
+                    </div>
+                    <div class="file-list">
+                        <h3 class="file"><span><a href="#">index.html</a></span></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="cell">
+            <h3 class="file-view">
+                <div class="header"><span><i>&bull;</i><i>&bull;</i><i>&bull;</i></span><h3>file.js</h3></div>
+                <div class="file-contents">
+                    <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestiae deserunt in rerum ipsam nostrum tenetur ullam doloribus, maxime, provident sequi saepe assumenda id quis ipsa similique! Minus totam numquam debitis.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container content">
+    <div class="grid">
+        <div class="cell">
+            <h2>What is <code>boh</code></h2>
+            <p><code>boh</code> is a teensy command line tool. When run, it searches through your files looking for build rules and runs them.</p>
+        </div>
+        <div class="cell">
+            <h2>Installation</h2>
+            <p><code>boh</code> is installed via <code>npm</code>.</p>
+            <pre><code>
+npm install -g boh
+            </code></pre>
+        </div>
+        <div class="cell">
+            <h2>Usage</h2>
+            <p>Using <code>boh</code> is a simple as running <code>boh</code> in the directory of your project. <code>boh</code> will find the rules needed to build your project by itself.</p>
+        </div>
+    </div>
+</div>
 </body>
+<script src="node_modules/d3/d3.min.js" type="text/javascript"></script>
+<script src="assets/build/index.js" type="text/javascript"></script>
 </html>

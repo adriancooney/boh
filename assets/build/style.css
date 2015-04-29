@@ -1,3 +1,177 @@
-/*!boh build: sass $this:../build/style.css */
+/*!boh 
+ * build: sass --sourcemap=none $this:../build/style.css 
+ * ignore: ../build/style.css
+ * link: reset.scss
+ */
+/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+    
+*/
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline; }
 
-/*# sourceMappingURL=style.css.map */
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display: block; }
+
+body {
+  line-height: 1; }
+
+ol, ul {
+  list-style: none; }
+
+blockquote, q {
+  quotes: none; }
+
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content: none; }
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0; }
+
+* {
+  box-sizing: border-box; }
+
+body {
+  background: #fefefe;
+  font-family: "Clear Sans"; }
+
+.container {
+  width: 960px;
+  margin: 0 auto; }
+
+.grid {
+  display: flex; }
+  .grid .cell {
+    flex: 1; }
+
+header {
+  font-family: "Handbook Pro PF";
+  text-align: center;
+  height: 260px; }
+  header h1 {
+    font-size: 12em;
+    color: #333333;
+    height: 170px; }
+  header h3 {
+    font-size: 2.2em;
+    font-weight: 100;
+    color: #b3b3b3; }
+
+.demo {
+  margin-bottom: 40px; }
+  .demo .cell {
+    height: 180px;
+    padding: 0 8px; }
+  .demo .terminal {
+    height: 100%;
+    width: 100%;
+    background: #333333;
+    border-radius: 8px;
+    color: #cccccc;
+    font-family: "Fira Mono";
+    font-size: 0.8em;
+    line-height: 140%;
+    padding: 8px; }
+  .demo .filesystem {
+    font-family: "Fira Mono";
+    font-size: 0.8em; }
+    .demo .filesystem .directory > h3:first-child {
+      margin-bottom: 10px;
+      margin-left: -12px;
+      padding: 2px 4px;
+      display: inline-block; }
+      .demo .filesystem .directory > h3:first-child span {
+        background: #fff;
+        border: 1px solid #ccc;
+        background: #eee;
+        border-radius: 6px;
+        padding: 0 3px; }
+      .demo .filesystem .directory > h3:first-child:before {
+        content: '';
+        position: absolute;
+        height: 2px;
+        width: 12px;
+        background: #ddd;
+        margin-top: 6px;
+        margin-left: -12px; }
+    .demo .filesystem > .directory > h3:before {
+      display: none; }
+    .demo .filesystem .file-list {
+      display: inline-block; }
+      .demo .filesystem .file-list h3 {
+        display: inline-block; }
+        .demo .filesystem .file-list h3 span {
+          margin-left: 8px; }
+          .demo .filesystem .file-list h3 span a {
+            color: inherit; }
+            .demo .filesystem .file-list h3 span a:hover {
+              color: #777; }
+      .demo .filesystem .file-list h3:not(:first-child):before {
+        display: none; }
+    .demo .filesystem .directory {
+      margin-left: 17px;
+      border-left: 3px solid #ddd;
+      border-bottom-left-radius: 6px; }
+    .demo .filesystem .leaf {
+      border: none; }
+      .demo .filesystem .leaf .file-list span {
+        margin-left: 0; }
+  .demo .file-view {
+    border: 1px solid #ddd;
+    height: 100%;
+    border-radius: 6px;
+    font-family: "Fira Mono"; }
+    .demo .file-view .header {
+      background: #eee;
+      padding: 4px; }
+      .demo .file-view .header h3 {
+        text-align: center;
+        font-size: 0.8em; }
+      .demo .file-view .header span {
+        position: absolute;
+        font-size: 1.6em;
+        display: inline-block;
+        margin-top: -6px; }
+        .demo .file-view .header span i:nth-child(1) {
+          color: red; }
+        .demo .file-view .header span i:nth-child(2) {
+          color: #F6C969; }
+        .demo .file-view .header span i:nth-child(3) {
+          color: green; }
+    .demo .file-view .file-contents {
+      padding: 6px; }
+      .demo .file-view .file-contents p {
+        font-size: 0.75em;
+        line-height: 140%; }
+
+.content .cell {
+  padding: 12px; }
+.content h2 {
+  font-size: 1.7em;
+  font-weight: bold;
+  margin: 12px 0; }
+.content p {
+  line-height: 140%; }
