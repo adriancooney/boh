@@ -1,35 +1,141 @@
 var boh = require("../src/boh"),
     path = require("path"),
-    assert = require("assert");
+    assert = require("assert"),
+    stream = require("stream");
 
 const EXAMPLE_DIR = path.join(__dirname, "/dir");
 
 describe("boh", function () {
-    describe(".extractHeader", function() {
-        it("should extract a rule from `//` comment head", function() {
-            assert.equal(boh.extractHeader("//!boh Hello world!"), " Hello world!");
-            assert.equal(boh.extractHeader("//!boh Hello world!\n// Hello world again!"), " Hello world!\n Hello world again!");
-            assert.equal(boh.extractHeader("//!boh Hello world!\n// Hello world again!\nfoo"), " Hello world!\n Hello world again!");
+    describe(".extractHeaderFromStream", function() {
+        it("should create a ReadableStream", function(done) {
+            var content = "Hello world!",
+                readable = streamWithContent(content);
+
+            readable.on("data", function(chunk) {
+                assert.equal(chunk.toString(), content);
+            });
+
+            readable.on("end", done);
         });
 
-        it("should extract a rule from `/* */` comment head", function() {
-            assert.equal(boh.extractHeader("/*!boh Hello world!"), " Hello world!");
-            assert.equal(boh.extractHeader("/*!boh Hello world! */"), " Hello world! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! */ "), " Hello world! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!"), " Hello world! \n Hello world again!");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! \n*/"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */foo"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\nfoo"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n * Hello world again!\n* And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh Hello world! \n Hello world again!\n And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
-            assert.equal(boh.extractHeader("/*!boh\n Hello world! \n Hello world again!\n And again! */\n* foo"), " Hello world! \n Hello world again!\n And again! ");
+        it("should push multiple chunks of content", function(done) {
+            var content = ["Hello world!", "Foo Bar"],
+                readable = streamWithContent(content.slice()),
+                i = 0;
+
+            readable.on("data", function(chunk) {
+                assert.equal(content[i++], chunk.toString());
+            });
+
+            readable.on("end", done);
         });
 
-        it("should extract a rule from `#` comment head", function() {
-            assert.equal(boh.extractHeader("#!boh Hello world!"), " Hello world!");
-            assert.equal(boh.extractHeader("#!boh Hello world!\n# Hello world again!"), " Hello world!\n Hello world again!");
-            assert.equal(boh.extractHeader("#!boh Hello world!\n# Hello world again!\nfoo"), " Hello world!\n Hello world again!");
+        it("should not extract the contents without the comment being at the start of the stream", function(done) {
+            boh.extractHeaderFromStream(streamWithContent([
+                "Foo bar",
+                "//!boh Hello world!"
+            ].join("\n")), function(err, contents) {
+                assert.equal(contents, "");
+                done();
+            });
+        });
+
+        it("should extract the contents of a comment spanning multiple lines (non multiline comment)", function(done) {
+            boh.extractHeaderFromStream(streamWithContent([
+                "//!bohfoo",
+                "// Hello world",
+                "//",
+                "// Batman, you suck!",
+                "",
+                "// Another comment",
+                "foo bar"
+            ].join("\n"), done), function(err, contents) {
+                assert.equal([
+                    "foo",
+                    " Hello world",
+                    "",
+                    " Batman, you suck!"
+                ].join("\n"), contents);
+                done();
+            });
+        });
+
+        it("should extract the contents of a multiline comment", function(done) {
+            boh.extractHeaderFromStream(streamWithContent([
+                "/*!boh",
+                "Hello world",
+                "",
+                "Batman, you suck!",
+                "*/",
+                "// Another comment",
+                "foo bar"
+            ].join("\n"), done), function(err, contents) {
+                assert.equal([
+                    "",
+                    "Hello world",
+                    "",
+                    "Batman, you suck!",
+                    ""
+                ].join("\n"), contents);
+                done();
+            });
+        });
+
+        it("should extract the contents of a single line comment with opening and closing tags", function(done) {
+            boh.extractHeaderFromStream(streamWithContent("/*!boh Hello world! */"), function(err, contents) {
+                assert.equal(" Hello world! ", contents);
+                done();
+            });
+        });
+
+        it("should maintain context over multiple chunks", function(done) {
+            boh.extractHeaderFromStream(streamWithContent([[
+                "//!boh",
+                "// Hello world!",
+                "//"
+            ].join("\n"), " Hello world again!"]), function(err, contents) {
+                assert.equal(contents, [
+                    "",
+                    " Hello world!",
+                    " Hello world again!"
+                ].join("\n"));
+                done();
+            });
+        });
+
+        function streamWithContent(strings) {
+            var readable = new stream.Readable(),
+                data = Array.isArray(strings) ? strings : [strings];
+
+            readable._read = function() {
+                this.push(data.length ? data.shift() : null);
+            };
+
+            return readable;
+        }
+    });
+
+    describe(".extractPrefix", function() {
+        it("should extract the prefix from a text block", function() {
+            assert.equal(boh.extractPrefix([
+                "abcfedghij",
+                "abcfejlls",
+                "abcdasy"
+            ].join("\n")), "abc");
+        });
+    });
+
+    describe(".unprefix", function() {
+        it.only("should unprefix tabs from the start of a block", function() {
+            assert.equal(boh.unprefix([
+                "//   Hello world!",
+                "//      Bar",
+                "//   Foo"
+            ].join("\n")), [
+                "Hello world!",
+                "   Bar",
+                "Foo"
+            ].join("\n"));
         });
     });
 

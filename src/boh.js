@@ -24,6 +24,20 @@ const BOH_IDENTIFIER = "!boh";
 const BOH_PLUGIN_PREFIX = "boh-";
 
 /**
+ * The types of comments boh can parse. It's an array
+ * of {String}s, which means the line starts with that or
+ * and {Array} of a start and end. Anything between that
+ * is considered content.
+ * 
+ * @type {Array}
+ */
+const COMMENT_TYPES = [
+    "//", 
+    "#", 
+    ["/*", "*/"]
+];
+
+/**
  * Extract the contents of the header comment. It should account for all
  * comment styles (or at least the most common). Examples:
  *
@@ -52,54 +66,142 @@ const BOH_PLUGIN_PREFIX = "boh-";
  * @param  {String} string String with comment header.
  * @return {String}        Contents of comment.
  */
-boh.extractHeader = function(string) {
-    // Ensure we have our boh token and that the file begins with the build rule.
-    if(string.match(boh.headerRegex || (boh.headerRegex = new RegExp("^(?:\\/|\\*|#)+\\s*" + BOH_IDENTIFIER)))) {
-        // Remove the BOH_IDENTIFIER
-        string = string.replace(BOH_IDENTIFIER, "");
+boh.extractHeaderFromStream = function(stream, callback) {
+    var state = {
+        contents: [], // The contents of the comment header
+        type: COMMENT_TYPES.slice(),
+        comment: {}
+    };
 
-        // Split the string line by line
-        return string.split("\n").reduce(function(state, line, index, values) {
-            if(state.extracting && (
-                line.match(/^\s*(\/\/)(.*)$/)  || // "//"
-                line.match(/^\s*(\/\*)(.*)$/) || // "/*"
-                line.match(/^\s*(#)(.*)$/) || // "#"
-                (state.commentType === "/*" && line.match(/^\s*\*(?!\/)(.*)$/)) || // Match " * " (comment block)
-                (state.commentType === "/*" && line.match(/^(.*)$/)) // Comment block without and prefix
-            )) {
+    // Requirements for this parser to qualify a comment as
+    // the "header comment":
+    // 1. It *has* to be at the start of the stream.
+    // 2. The <commentType><BOH_IDENTIFIER> has to be first characters after. (No whitespace)
+    //    opening the comment block.
+    // 2. The first comment line encountered is deemed to be the
+    //    comment type for the header block. i.e. If the header
+    //    starts with a //, only the following comments of //
+    //    will be regarded as the header.
+    var n = 0;
+    stream.on("data", function(chunk) {
+        chunk = chunk.toString();
 
-                var $1 = RegExp.$1, $2 = RegExp.$2, contents;
+        if(!state.exited) for(var i = 0, length = chunk.length; i < length; i++, n++) {
+            var character = chunk[i];
 
-                if(($1 && $2) || $1 == "/*") { // If we have two matches, we have a comment type and some content
-                    state.commentType = $1;
-                    contents = $2;
-                } else if($1 && !$1.match(/^\s*\/\/\s*$/)) { // If we have just one match, it's just content
-                    contents = $1
-                }
+            if(n === 0) {
+                // Special case, were at the *very* start of the file
+                // Requirements 1 & 2 need to be satisfied here.
+                // Loop over each of the comment types and ensure
+                if(!COMMENT_TYPES.some(function(type) {
+                    var token = (Array.isArray(type) ? type[0] : type) + BOH_IDENTIFIER, // Concencate <comment type><BOH_IDENTIFIER>
+                        extracted = chunk.substr(0, token.length); // Take out the first token.length
 
-                if(contents) {
-                    // Replace any closing tags that may be in the line when the comment type is /**/
-                    if(state.commentType === "/*" && contents.match(/\*\//)) {
-                        // Check if it's JUST a */
-                        if(contents.match(/^\s*\*\/\s*$/)) {
-                            // If it is, don't bother push anything
-                            contents = false;
-                        } else {
-                            // Otherwise delete the closing comment tag 
-                            contents = contents.replace(/\*\/.*/, "");
-                        }
+                    if(token === extracted) {
+                        // Great! We have a comment block
+                        state.comment.type = type;
+                        state.comment.multiline = Array.isArray(type);
 
-                        state.extracting = false; // Comment is closed, were done
+                        // Skip past the identifier
+                        i = token.length - 1;
+
+                        return true;
                     }
-
-                    // Push the contents
-                    if(contents !== false) state.contents.push(contents);
+                })) {
+                    // If the some has looped over the comment types and no
+                    // type has been found, then there's no point in continuing
+                    // so exit with zero content.
+                    state.exited = true;
+                    return callback(null, "");
                 }
-            } else state.extracting = false;
+            } else if(state.pending !== undefined && i === 0) {
+                // To ensure continuity between chunks, we need
+                // to make sure that if there's anything in the
+                // pending that pending + (chunk.substr(0, state.comment.type.length - pending.length))
+                // is equal to the state.comment.type. 
+                // First of all reconstruct the token.
+                var extracted = chunk.substr(0, state.commen.type.length - state.pending.length),
+                    token = pending + extracted;
 
-            return state;
-        }, { contents: [], extracting: true }).contents.join("\n");
-    }
+                if(token === state.comment.type) {
+                    i += extracted.length;
+                    delete state.pending;
+                } else {
+                    state.exited = true;
+                    return callback(null, state.contents.join(""));
+                }
+            } else {
+                // If we come to a new line, and it's not a multiline comment
+                // then we have to check the next line is a comment
+                // Note: We can't reach here without a commen type
+                if(character === "\n" && !state.comment.multiline) {
+                    var token = chunk.substr(i + 1, state.comment.type.length);
+
+                    if(token.length !== state.comment.type.length) {
+                        // We've reached here if we've come to the
+                        // end of a chunk and it can't look ahead
+                        // We need to save this until the next chunk
+                        state.pending = token;
+                    } else if(token === state.comment.type) {
+                        // Skip past the comment type
+                        i += state.comment.type.length
+                    } else {
+                        state.exited = true;
+                        return callback(null, state.contents.join(""));
+                    }
+                } else if(state.comment.multiline) {
+                    // If it's a multiline comment, we have to look ahead
+                    // to find the closing tag
+                    var closingTag = state.comment.type[1],
+                        token = chunk.substr(i, closingTag.length);
+
+                    // If the look ahead matches, push the contents!
+                    if(token === closingTag) {
+                        state.exited = true;
+                        return callback(null, state.contents.join(""));
+                    }
+                }
+
+                // We assume that if were still looping (i.e. not exited
+                // via the callback), then all characters should be pushed
+                state.contents.push(character);
+            }
+        }
+    });
+
+    stream.on("end", function() {
+        if(!state.exited) return callback(null, state.contents.join(""));
+    });
+};
+
+/**
+ * Extract the prefix from a block of lines (if any).
+ * @param  {String} string Block of text.
+ * @return {String}        The prefix.
+ */
+boh.extractPrefix = function(string) {
+    return string.split("\n").reduce(function(prefix, line) {
+        if(prefix) {
+            var newPrefix = "";
+            for(var i = 0; i < line.length; i++) 
+                if(line[i] === prefix[i]) newPrefix += prefix[i];
+
+            return newPrefix;
+        } else return line;
+    }, null);
+};
+
+/**
+ * Remove a prefix from the front of a text block.
+ * @param  {String} string Block of text.
+ * @return {String}        Unprefixed string.
+ */
+boh.unprefix = function(string) {
+    var prefix = boh.extractPrefix(string);
+
+    return string.split("\n").map(function(line) {
+        return line.substr(prefix.length);
+    }).join("\n");
 };
 
 /**
