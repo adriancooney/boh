@@ -73,7 +73,7 @@ boh.extractHeader = function(string) {
                 if(($1 && $2) || $1 == "/*") { // If we have two matches, we have a comment type and some content
                     state.commentType = $1;
                     contents = $2;
-                } else if($1) { // If we have just one match, it's just content
+                } else if($1 && !$1.match(/^\s*\/\/\s*$/)) { // If we have just one match, it's just content
                     contents = $1
                 }
 
@@ -95,7 +95,7 @@ boh.extractHeader = function(string) {
                     // Push the contents
                     if(contents !== false) state.contents.push(contents);
                 }
-            }
+            } else state.extracting = false;
 
             return state;
         }, { contents: [], extracting: true }).contents.join("\n");
