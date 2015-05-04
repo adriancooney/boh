@@ -52,12 +52,6 @@ Index.prototype.addFile = function(entry, callback) {
                     var plugin = boh.getPlugin("indexing", rule.name)
 
                     if(plugin && plugin.phase === "indexing") {
-
-                        // Format the rule content
-                        rule.content = boh.format(rule.content, {
-                            "this": rule.file
-                        });
-
                         debug("Running".bold + " %s:%s.", self.relative(rule.file).yellow, rule.name.cyan);
 
                         plugin.execute(rule, self, function(err, built) {
@@ -72,6 +66,9 @@ Index.prototype.addFile = function(entry, callback) {
                             // Secondly, ONE function in the ENTIRE NODE.JS API uses
                             // this callback style so you decide to throw out the
                             // callback style of THE REST OF THE ENTIRE ASYNC API?
+                            // Sorry for the rant, I think I'm getting a little 
+                            // annoyed I have to reached an indentation of 8
+                            // (async, I love you really. Forever.)
                             if(err) callback(err);
                             else filterCallback(false);
                         });
