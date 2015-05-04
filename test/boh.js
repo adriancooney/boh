@@ -103,6 +103,13 @@ describe("boh", function () {
             });
         });
 
+        it("should understand empty text blocks", function() {
+            boh.extractHeaderFromStream(streamWithContent(""), function(err, contents) {
+                assert.equal(contents, null);
+                done();
+            });
+        });
+
         function streamWithContent(strings) {
             var readable = new stream.Readable(),
                 data = Array.isArray(strings) ? strings : [strings];
@@ -123,10 +130,29 @@ describe("boh", function () {
                 "abcdasy"
             ].join("\n")), "abc");
         });
+
+        it("should ignore empty lines", function() {
+            assert.equal(boh.extractPrefix([
+                "\n",
+                "abcfedghij",
+                "",
+                "abcfejlls",
+                "abcdasy",
+                ""
+            ].join("\n")), "abc");
+        });
+
+        it("should not find a prefix a single line", function() {
+            assert.equal(boh.extractPrefix("Hello world!"), null);
+        });
+
+        it("should not find a prefix with line amoung empty lines", function() {
+            assert.equal(boh.extractPrefix("\n * build: woo!\n"), null);
+        });
     });
 
     describe(".unprefix", function() {
-        it.only("should unprefix tabs from the start of a block", function() {
+        it("should unprefix tabs from the start of a block", function() {
             assert.equal(boh.unprefix([
                 "//   Hello world!",
                 "//      Bar",
@@ -137,71 +163,25 @@ describe("boh", function () {
                 "Foo"
             ].join("\n"));
         });
-    });
 
-    describe(".extractRules", function() {
-        it("should successfully parse YAML and return rules", function() {
-            assert.deepEqual(boh.extractRules("build: foo"), [{ name: "build", content: "foo" }]);
-            assert.deepEqual(boh.extractRules("build: |\n  foo\n  bar"), [{ name: "build", content: "foo\nbar\n" }]);
-        });
-    });
-
-    describe(".extractRulesFromHeader", function () {
-        var expected = [{ name: "build", content: "browserify" }, { name: "includes", content: ["index.js", "User.js"] }];
-        it("should extract the rules from an // header", function() {
-            var header = [
-                "//!boh build: browserify",
-                "// includes:",
-                "//   - index.js",
-                "//   - User.js",
-            ].join("\n");
-
-            assert.deepEqual(boh.extractRulesFromHeader(header), expected);
+        it("should unprefix stars from the start of a block", function() {
+            assert.equal(boh.unprefix([
+                " * build: |",
+                " *   browserify --input /Users/Adrian/Dropbox/Projects/boh/test/dir/example.js --output ../lul",
+                " *   echo \"Hello world!\"",
+                " *   pwd",
+                " * link: hurr/durr/foo.js"
+            ].join("\n")), [
+                "build: |",
+                "  browserify --input /Users/Adrian/Dropbox/Projects/boh/test/dir/example.js --output ../lul",
+                "  echo \"Hello world!\"",
+                "  pwd",
+                "link: hurr/durr/foo.js",
+            ].join("\n"));
         });
 
-        it("should extract the rules from an # header", function() {
-            var header = [
-                "#!boh build: browserify",
-                "# includes:",
-                "#   - index.js",
-                "#   - User.js",
-            ].join("\n");
-
-            assert.deepEqual(boh.extractRulesFromHeader(header), expected);
-        });
-
-        it("should extract the rules from an /* header", function() {
-            var header = [
-                "/*!boh build: browserify",
-                " includes:",
-                "   - index.js",
-                "   - User.js*/",
-            ].join("\n");
-
-            assert.deepEqual(boh.extractRulesFromHeader(header), expected);
-        });
-
-        it("should extract the rules from an /* (prefixed) header", function() {
-            var header = [
-                "/*!boh build: browserify",
-                " * includes:",
-                " *   - index.js",
-                " *   - User.js*/",
-            ].join("\n");
-
-            assert.deepEqual(boh.extractRulesFromHeader(header), expected);
-        });
-
-        it("should extract the rules from an /* (prefixed) header", function() {
-            var header = [
-                "/*!boh build: browserify",
-                " * includes:",
-                " *   - index.js",
-                " *   - User.js",
-                " */",
-            ].join("\n");
-
-            assert.deepEqual(boh.extractRulesFromHeader(header), expected);
+        it("should not unprefix a single line", function() {
+            assert.equal(boh.unprefix("Hello world!"), "Hello world!");
         });
     });
 

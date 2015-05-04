@@ -180,7 +180,11 @@ boh.extractHeaderFromStream = function(stream, callback) {
  * @return {String}        The prefix.
  */
 boh.extractPrefix = function(string) {
-    return string.split("\n").reduce(function(prefix, line) {
+    var lines = string.split("\n").filter(function(line) { 
+        return !line.match(/^[\s\n]*$/);
+    });
+
+    if(lines.length > 1) return lines.reduce(function(prefix, line) {
         if(prefix) {
             var newPrefix = "";
             for(var i = 0; i < line.length; i++) 
@@ -189,6 +193,8 @@ boh.extractPrefix = function(string) {
             return newPrefix;
         } else return line;
     }, null);
+
+    return null;
 };
 
 /**
@@ -199,13 +205,13 @@ boh.extractPrefix = function(string) {
 boh.unprefix = function(string) {
     var prefix = boh.extractPrefix(string);
 
-    return string.split("\n").map(function(line) {
-        return line.substr(prefix.length);
-    }).join("\n");
+    if(prefix) return string.replace(new RegExp("^" + prefix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), "gm"), "");
+    else return string;
 };
 
 /**
- * Extract rules from an input YAML string. 
+ * Extract rules from an input YAML string. YAML parser
+ * errors are NOT caught, that's left up to you.
  *      
  * @param  {String} string String with rules.
  * @return {Array}         [{ name {String}, content {String} }]
@@ -214,21 +220,12 @@ boh.extractRules = function(string) {
     // Parse the YAML header
     var data = yaml.safeLoad(string);
 
-    return Object.keys(data).reduce(function(rules, rule) {
-        rules.push({ name: rule, content: data[rule] });
-        return rules;
-    }, []);
-};
-
-/**
- * Extract the rules from a header comment. See .extractHeader and .extractRules.
- * @param  {String} string String with header e.g. contents of a file.
- * @return {Array}        [{ rule {String}, content {String} }]
- */
-boh.extractRulesFromHeader = function(string) {
-    string = boh.extractHeader(string);
-    if(string) return boh.extractRules(string);
-    else return [];
+    if(data) {
+        return Object.keys(data).reduce(function(rules, rule) {
+            rules.push({ name: rule, content: data[rule] });
+            return rules;
+        }, []);
+    } else return [];
 };
 
 /**
@@ -237,34 +234,34 @@ boh.extractRulesFromHeader = function(string) {
  * @param  {Function} callback (err, rules)
  */
 boh.extractRulesFromFile = function(file, callback) {
-    async.waterfall([
-        fs.readFile.bind(fs, file, "utf8"), // Read the contents of the file. Little dissapointed I'm buffering the whole thing. Streams, Adrian, streams.
+    boh.extractHeaderFromStream(fs.createReadStream(file), function(err, header) {
+        if(err) callback(err);
+        else if(header) {
+            // Remove any prefixes
+            header = boh.unprefix(header);
 
-        function(contents, callback) {
-            // Extract the header
-            var header = boh.extractHeader(contents);
+            // Format any meta variables such as $this or $dir
+            header = boh.format(header, {
+                "this": file,
+                "dir": path.dirname(file)
+            });
 
-            if(header) {
-                // Format any meta variables wuch as $this or $dir
-                header = boh.format(header, {
-                    "this": file,
-                    "dir": path.dirname(file)
+            try {
+                // Parse the YAML header and return
+                var rules = boh.extractRules(header);
+
+                // Add a reference to the file the rules was extracted from
+                rules.forEach(function(rule) {
+                    rule.file = file;
                 });
 
-                try {
-                    // Parse the YAML header and return
-                    var rules = boh.extractRules(header);
-
-                    // Add a reference to the file the rules was extracted from
-                    rules.forEach(function(rule) {
-                        rule.file = file;
-                    });
-
-                    callback(null, rules);
-                } catch(err) { callback(err); }
-            } else callback(null, []);
-        }
-    ], callback);
+                callback(null, rules);
+            } catch(err) { 
+                // Handle any parser errors
+                callback(err); 
+            }
+        } else callback(null, []);
+    });
 };
 
 /**
