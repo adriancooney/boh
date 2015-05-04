@@ -1,6 +1,6 @@
 var path = require("path");
 
-module.exports = function(logger, builder, verbose, directory) {
+module.exports = function(logger, builder, verbose, watching, directory) {
     var errors = [], TAB = "    ";
 
     builder.on("rule", function(plugin, rule) {
@@ -41,6 +41,8 @@ module.exports = function(logger, builder, verbose, directory) {
     })
 
     builder.on("finish", function() {
-        logger.log("\nBuild complete " + (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + ".")
+        logger.log("\nBuild complete " + 
+            (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + 
+            (watching ? " at (" + (new Date()).toString().substr(16, 8) + ")" : "") + ".")
     });
 };
