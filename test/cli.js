@@ -29,7 +29,7 @@ describe("CLI", function () {
                 async.waterfall([
                     fs.writeFile.bind(fs, newFile, [
                         "/*!boh",
-                        " * build: woo!",
+                        "  build: woo!",
                         " */"
                     ].join("\n")),
 
@@ -52,7 +52,7 @@ describe("CLI", function () {
                 async.waterfall([
                     fs.writeFile.bind(fs, newFile, [
                         "/*!boh",
-                        " * build: woot",
+                        " build: woot",
                         " */"
                     ].join("\n")),
 

@@ -8,7 +8,6 @@ describe("Indexer", function() {
     it("should create a new index from the filesystem", function(next) {
         var indexer = new boh.Indexer();
         indexer.index(EXAMPLE_DIR, function(err, index) {
-            console.log(arguments);
             if(err) next(err);
             else {
                 assert(Array.isArray(index.files) && index.files.length, "Has files array.");

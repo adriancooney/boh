@@ -77,7 +77,6 @@ Indexer.prototype.index = function(directory, options, callback) {
                             } else {
                                 // We have a file
                                 debug(entry.yellow);
-                                
 
                                 // Add it to the index
                                 index.addFile(entry, function(err, file, rules) {
