@@ -150,7 +150,7 @@ function run(dir, callback) {
                 _index = index;
 
                 // Create the new reporter and build!
-                buildReporter(program.verbose, dir).build(index, callback);
+                buildReporter(program.verbose, false, dir).build(index, callback);
             } else log("No files found. :(");
         }
     ], function(err) {
@@ -166,7 +166,7 @@ function run(dir, callback) {
  */
 function watch(index) {
     var cwd = path.relative(process.cwd(), index.root);
-    log("\n" + BOH + " is watching for changes in %s.", (!cwd ? "the current directory" : cwd).magenta);
+    log("\n" + BOH + " is watching for changes in %s..", (!cwd ? "the current directory" : cwd).magenta);
 
     // Create the chokidar watcher
     var watcher = chokidar.watch(index.root, { 
@@ -186,10 +186,9 @@ var events = {
     add: function(index, dir, file, callback) {
         index.addFile(file, function(err) {
             if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-            else {
-                log("New file".green + " %s added to the index.", file);
-                if(callback) callback();
-            }
+            else log("New file".green + " %s added to the index.", file);
+
+            if(callback) callback(err);
         });
     },
 
@@ -201,8 +200,10 @@ var events = {
     change: function(index, dir, file, callback) {
         // Re-add the file in case the rules change
         index.addFile(file, function(err) {
-            if(err) log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
-            else {
+            if(err) {
+                log(index.relative(file) + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+                if(callback) callback(err);
+            } else {
                 log("\n%s changed.", file.yellow);
 
                 // Find the rules associated with that file and run them
@@ -210,7 +211,7 @@ var events = {
 
                 if(rules && rules.length) 
                     // And build the select rules.
-                    buildReporter(option("-v"), dir).buildRules(index, rules, callback);
+                    buildReporter(program.verbose, true, dir).buildRules(index, rules, callback);
             }
         });
     }
@@ -284,7 +285,7 @@ function fail() {
  * Create a new builder reporter.
  * @return {boh.Builder} 
  */
-function buildReporter(verbose, dir) {
+function buildReporter(verbose, watching, dir) {
     // Create the build reporter
     var builder = new boh.Builder()
 
@@ -296,7 +297,7 @@ function buildReporter(verbose, dir) {
         program: program,
         indent: indent,
         relative: relative
-    }, builder, verbose, dir);
+    }, builder, verbose, watching, dir);
 
     return builder;
 }
