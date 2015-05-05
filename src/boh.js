@@ -365,6 +365,7 @@ boh.findPlugins = function(base, callback) {
                 // Push the dependencies matching boh- into the array
                 if(err) callback(err);
                 else if(packageJSON.dependencies) callback(null, Object.keys(packageJSON.dependencies).filter(isPlugin));
+                else callback(null, []);
             });
         },
 
@@ -446,8 +447,17 @@ boh.getPackageJSON = function(dir, callback) {
     // Read the current directory
     fs.readdir(dir, function(err, entries) {
         if(err) callback(err);
-        else if(entries.indexOf("package.json") !== -1) debug("package.json found in %s", dir.magenta), callback(null, require(path.join(dir, "package.json")));
-        else if(dir === "/") callback(null, undefined);
+        else if(entries.indexOf("package.json") !== -1) {
+            debug("package.json found in %s", dir.magenta);
+
+            var packageJSON = path.join(dir, "package.json");
+
+            try {
+                callback(null, require(packageJSON));
+            } catch(err) {
+                callback(new Error("Error importing " + packageJSON + "."));
+            }
+        } else if(dir === "/") callback(null, undefined);
         else boh.getPackageJSON(path.resolve(dir, ".."), callback);
     })
 };
