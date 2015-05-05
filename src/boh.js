@@ -32,9 +32,10 @@ const BOH_PLUGIN_PREFIX = "boh-";
  * @type {Array}
  */
 const COMMENT_TYPES = [
-    "//", 
-    "#", 
-    ["/*", "*/"]
+    "//", // Javascript, C, C++, Go, etc.
+    "#", // Bash, ruby, coffeescript
+    ["/*", "*/"], // Pretty much lots of languages
+    ["<!--", "-->"] // HTML, XML
 ];
 
 /**
