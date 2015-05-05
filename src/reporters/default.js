@@ -1,7 +1,7 @@
 var path = require("path");
 
 module.exports = function(logger, builder, verbose, watching, directory) {
-    var errors = [], TAB = "    ";
+    var errors = [], TAB = "    ", rules = [];
 
     builder.on("rule", function(plugin, rule) {
         var descriptor = path.relative(directory, rule.file).yellow + ":" + rule.name.cyan;
@@ -19,6 +19,8 @@ module.exports = function(logger, builder, verbose, watching, directory) {
 
         plugin.on("finish", function(rule) {
             logger.raw((verbose ? TAB + descriptor : "") + (" ✓ (" + rule.duration + "ms)").green + "\n");
+
+            rules.push(rules);
 
             if(typeof rule.output === "string") rule.output.split("\n").filter(function(line) {
                 return !!line;
@@ -41,6 +43,8 @@ module.exports = function(logger, builder, verbose, watching, directory) {
     })
 
     builder.on("finish", function() {
+        if(rules.length === 0) logger.log("\n" + TAB + "No build rules found.".red);
+
         logger.log("\nBuild complete " + 
             (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + 
             (watching ? " at (" + (new Date()).toString().substr(16, 8) + ")" : "") + ".")
