@@ -104,7 +104,7 @@ Index.prototype.addRules = function(file, rules) {
 Index.prototype.link = function(owner, link) {
     if(Array.isArray(link)) link.forEach(this.link.bind(this, owner));
     else {
-        if(this.links[link]) this.links[link].push(owner);
+        if(this.links[link] && this.links[link].indexOf(owner) === -1) this.links[link].push(owner);
         else this.links[link] = [owner];
     }
 };
