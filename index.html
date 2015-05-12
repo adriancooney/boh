@@ -8,33 +8,40 @@
 <header>
     <div class="container">
         <h1>boh</h1>
-        <h3>A simple build tool.</h3>
+        <h3>The smart, simple build tool.</h3>
     </div>
 </header>
 <div class="container demo">
     <div class="grid">
-        <div class="cell">
+        <div class="cell terminal-slot">
+            <noscript>
             <div class="terminal">
-                <p>$ boh</p>
-                <p>Hello world</p>
+<pre><span class="input"><span class="green">$</span> boh</span>
+Running <span class="bg-black blue">boh</span> in the <span class="magenta">current directory</span>.
+
+    <span class="yellow">assets/style/style.scss</span>:<span class="blue">build</span> <span class="green">&#10004; (492ms)</span>
+
+    <span class="yellow">src/index.js</span>:<span class="blue">build</span> <span class="green">&#10004; (497ms)</span>
+
+Build complete <span class="green">successfully</span>.</pre>
             </div>
+            </noscript>
         </div>
-        <div class="cell">
+        <div class="cell filesystem-slot">
+            <noscript>
             <div class="filesystem">
                 <div class="item directory">
                     <h3><span>project/</span></h3>
                     <div class="item directory leaf">
                         <h3><span>build/</span></h3>
                         <div class="file-list">
-                            <h3 class="file"><span><a href="#">bundle.js</a></span></h3>
-                            <h3 class="file"><span><a href="#">bundle.css</a></span></h3>
+                            <h3 class="file"><span><a href="#">bundle.js</a></span></h3><h3 class="file"><span><a href="#">bundle.css</a></span></h3>
                         </div>
                     </div>
                     <div class="item directory leaf">
                         <h3><span>src/</span></h3>
                         <div class="file-list">
-                            <h3 class="file"><span><a href="#">index.js</a></span></h3>
-                            <h3 class="file"><span><a href="#">User.js</a></span></h3>
+                            <h3 class="file"><span><a href="#">index.js</a></span></h3><h3 class="file"><span><a href="#">User.js</a></span></h3>
                         </div>
                     </div>
                     <div class="item directory leaf">
@@ -48,37 +55,79 @@
                     </div>
                 </div>
             </div>
+            </noscript>
         </div>
-        <div class="cell">
-            <h3 class="file-view">
-                <div class="header"><span><i>&bull;</i><i>&bull;</i><i>&bull;</i></span><h3>file.js</h3></div>
-                <div class="file-contents">
-                    <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestiae deserunt in rerum ipsam nostrum tenetur ullam doloribus, maxime, provident sequi saepe assumenda id quis ipsa similique! Minus totam numquam debitis.</p>
+        <div class="cell fileviewer-slot">
+            <noscript>
+            <div class="fileviewer">
+                <div class="header"><span><i>&bull;</i><i>&bull;</i><i>&bull;</i></span><h5>file.js</h5></div>
+                <pre>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestiae deserunt in rerum ipsam nostrum tenetur ullam doloribus, maxime, provident sequi saepe assumenda id quis ipsa similique! Minus totam numquam debitis.</pre>
                 </div>
             </div>
+            </noscript>
         </div>
     </div>
 </div>
 <div class="container content">
-    <div class="grid">
+    <section class="synopsis grid">
         <div class="cell">
-            <h2>What is <code>boh</code></h2>
-            <p><code>boh</code> is a teensy command line tool. When run, it searches through your files looking for build rules and runs them.</p>
+            <h2>What is boh?</h2>
+            <p>boh is a simple, smart command line build tool with plugins and <i class="r">c</i><i class="r">o</i><i class="r">l</i><i class="r">o</i><i class="r">r</i><i class="r">s</i>. It's designed for fast, painless prototyping and built with simplicity in mind.</p>
         </div>
         <div class="cell">
             <h2>Installation</h2>
-            <p><code>boh</code> is installed via <code>npm</code>.</p>
-            <pre><code>
-npm install -g boh
-            </code></pre>
+            <p>Install boh via <a href="http://npmjs.org"></a>.</p>
+            <code class="block">npm install -g boh</code>
         </div>
         <div class="cell">
             <h2>Usage</h2>
-            <p>Using <code>boh</code> is a simple as running <code>boh</code> in the directory of your project. <code>boh</code> will find the rules needed to build your project by itself.</p>
+            <p>Using boh is a simple as running <code>boh</code> in the directory of your project. boh will find the rules needed to build your project by itself.</p>
         </div>
-    </div>
+    </section>
+    <section class="grid">
+        <div class="cell">
+            <h3>Build Rules</h3>
+            <p>One of boh's nicest features is the ability to define build rules directly in your files. boh rules are simply YAML at the top of a file in a comment (denoted with <code>!boh</code>). With a set of core rules: <code>build</code>, <code>link</code> and <code>ignore</code>, boh is a powerful system that allows you to interface with the command line tools you know. Every rule thereafter is a plugin that boh will <i>automatically</i> require after an npm install, globally and locally.</p>
+        </div>
+        <div class="cell">
+            <div class="fileviewer">
+                <div class="header"><span><i>&bull;</i><i>&bull;</i><i>&bull;</i></span><h5>style.scss</h5></div>
+                <div class="file-contents">
+                    <pre><span class="comment">/*<a href="#boh-identifier">!boh</a>
+ * <a href="#build-rule">build: sass $this:../build/output.css</a>
+ * <a href="#build-rule">ignore: ../build/output.css</a>
+ * <a href="#build-rule">link: ./**/*.scss</a>
+ */</span>
+<span class="keyword">import</span> <span class="string">'login.scss';</span>
+<span class="keyword">import</span> <span class="string">'header.scss';</span>
+<span class="keyword">import</span> <span class="string">'footer.scss';</span>
+
+<span class="keyword">body</span> {
+    background: <span class="special">#f04625</span>;
+    font-family: <span class="string">'Helvetica Neue'</span>, sans-serif;
+    font-size: <span class="number">16px</span>;</pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid">
+        <div class="cell">
+            <div class="terminal"><pre><span class="input"><span class="green">$</span> boh</span>
+Running <span class="bg-black blue">boh</span> in the <span class="magenta">current directory</span>.
+
+    <span class="yellow">assets/style/style.scss</span>:<span class="blue">build</span> <span class="green">&#10004; (492ms)</span>
+
+    <span class="yellow">src/index.js</span>:<span class="blue">build</span> <span class="green">&#10004; (497ms)</span>
+
+Build complete <span class="green">successfully</span>.
+
+<span class="bg-black blue">boh</span> is watching for changes in the <span class="magenta">current directory</span>..</pre>
+            </div>
+        </div>
+        <div class="cell"></div>
+    </section>
 </div>
 </body>
-<script src="node_modules/d3/d3.min.js" type="text/javascript"></script>
 <script src="assets/build/index.js" type="text/javascript"></script>
 </html>

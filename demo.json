@@ -1,0 +1,24 @@
+{
+    "filesystem": {
+        "root": "project",
+        "entries": {
+            "build": {},
+            "src": ["index.js", "User.js"]
+        }
+    },
+
+    "files": {
+        "project/src/index.js": "Hello world!"
+    },
+
+    "demo": [
+        ["terminal:typeCommand", "cd project"],
+        ["filesystem:flashEntry", "project/"],
+        ["utility:wait", 800],
+        ["terminal:typeCommand", "boh", 1000],
+        ["filesystem:flashEntry", "project/src/"],
+        ["filesystem:highlightEntry", "project/src/index.js"],
+        ["fileviewer:writeFile", "project/src/index.js"],
+        ["terminal:log", "    project/src/index.js:build"]
+    ]
+}
