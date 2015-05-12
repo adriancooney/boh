@@ -17,11 +17,8 @@ module.exports = new boh.Plugin(function run(rule, index, callback) {
 
     // Execute the script
     boh.execute(path.dirname(rule.file), script, function(err, stdout, stderr) {
-        if(err) {
-            // Make the error message pretty
-            err.message = err.message.replace(/Command failed: [^:]+/, "Command failed: " + index.relative(rule.file));
-            callback(err);
-        } else {
+        if(err) callback(err);
+        else {
             // Spit out the stdout
             stdout.split("\n")
                 .filter(function(l) { return !!l.trim(); })

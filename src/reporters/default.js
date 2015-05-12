@@ -14,7 +14,7 @@ module.exports = function(logger, builder, verbose, watching, directory) {
 
         plugin.on("error", function(err) {
             errors.push(err);
-            logger.raw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: ".red + err.message + "\n");
+            logger.raw((verbose ? "\n" + TAB + descriptor : "") + " ✘".red + " -> " + "Error: \n".red + logger.indent(2, err.message) + "\n");
         });
 
         plugin.on("finish", function(rule) {
@@ -47,6 +47,6 @@ module.exports = function(logger, builder, verbose, watching, directory) {
 
         logger.log("\nBuild complete " + 
             (errors.length ? ("with " + errors.length + " error" + (errors.length > 1 ? "s" : "")).red : "successfully".green) + 
-            (watching ? " at (" + (new Date()).toString().substr(16, 8) + ")" : "") + ".")
+            (watching ? " (" + (new Date()).toString().substr(16, 8) + ")" : "") + ".")
     });
 };

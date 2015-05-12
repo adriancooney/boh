@@ -365,7 +365,7 @@ boh.findPlugins = function(base, callback) {
             boh.getPackageJSON(base, function(err, packageJSON) {
                 // Push the dependencies matching boh- into the array
                 if(err) callback(err);
-                else if(packageJSON.dependencies) callback(null, Object.keys(packageJSON.dependencies).filter(isPlugin));
+                else if(packageJSON && packageJSON.dependencies) callback(null, Object.keys(packageJSON.dependencies).filter(isPlugin));
                 else callback(null, []);
             });
         },
