@@ -54,7 +54,7 @@ Index.prototype.addFile = function(entry, callback) {
                     if(plugin && plugin.phase === "indexing") {
                         debug("Running".bold + " %s:%s.", self.relative(rule.file).yellow, rule.name.cyan);
 
-                        plugin.execute(rule, self, function(err, built) {
+                        plugin.run(rule, self, function(err, built) {
                             // Remove any listeners
                             plugin.removeAllListeners();
                             

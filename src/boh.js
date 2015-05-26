@@ -413,10 +413,24 @@ boh.requirePlugins = function(plugins, callback) {
                 var pluginName = plugin.replace(BOH_PLUGIN_PREFIX, ""),
                     pluginExport = require(plugin.toString());
 
-                pluginExport.pluginName = pluginName;
-                pluginExport.debug = require("debug")("boh:plugin:" + pluginName);
+                // If were requiring locally, make sure we fix the name. They don't 
+                // have the boh prefix.
+                if(plugin.match(/([a-zA-Z_0-9\-]+)\.js$/)) pluginName = RegExp.$1;
 
-                boh.registerPlugin(pluginName, pluginExport);
+                // Make sure we don't have someone giving us a plugin already, that's
+                // an unnecessary dependency in the plugin
+                if(pluginExport instanceof boh.Plugin) throw new Error("Please export a function (or [function, opts]), not an instance of boh.Plugin. boh should not be a dependency in your plugin.");
+
+                // Account for a passed array, use them as arguments
+                if(!Array.isArray(pluginExport)) pluginExport = [pluginExport];
+
+                // Create the plugin instance
+                var pluginInstance = new boh.Plugin(pluginExport[0], pluginExport[1]);
+
+                pluginInstance.pluginName = pluginName;
+                pluginInstance.debug = require("debug")("boh:plugin:" + pluginName);
+
+                boh.registerPlugin(pluginName, pluginInstance);
                 ee.emit("plugin:loaded", plugin);
             } catch(err) {
                 if(err.code === "MODULE_NOT_FOUND") ee.emit("plugin:error", plugin, err);
@@ -425,7 +439,7 @@ boh.requirePlugins = function(plugins, callback) {
         });
 
         // Run the callback out here by itself, require is synchronous
-        callback();
+        if(callback) callback();
     });
 
     return ee;
@@ -472,11 +486,6 @@ boh.Indexer = require("./Indexer");
 boh.Builder = require("./Builder");
 
 // Require the packaged plugins in plugins/ and manually register them
-fs.readdirSync(path.join(__dirname, "plugins")).forEach(function(plugin) {
-    var pluginExport = require("./plugins/" + plugin),
-        pluginName = plugin.replace(".js", "");
-
-    plugin.pluginName = pluginName;
-    plugin.debug = require("debug")("boh:plugin:" + pluginName);
-    boh.registerPlugin(pluginName, pluginExport);
-});
+boh.requirePlugins(fs.readdirSync(path.join(__dirname, "plugins")).map(function(plugin) {
+    return "./plugins/" + plugin;
+}));

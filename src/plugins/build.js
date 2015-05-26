@@ -1,7 +1,6 @@
-var boh = require("../boh"),
-    path = require("path");
+var path = require("path");
 
-module.exports = new boh.Plugin(function run(rule, index, callback) {
+module.exports = function run(rule, index, callback) {
     var script = rule.content;
 
     if(Array.isArray(script)) script = script.join("\n");
@@ -16,7 +15,7 @@ module.exports = new boh.Plugin(function run(rule, index, callback) {
         }, this);
 
     // Execute the script
-    boh.execute(path.dirname(rule.file), script, function(err, stdout, stderr) {
+    this.execute(path.dirname(rule.file), script, function(err, stdout, stderr) {
         if(err) callback(err);
         else {
             // Spit out the stdout
@@ -27,4 +26,4 @@ module.exports = new boh.Plugin(function run(rule, index, callback) {
             callback(null, stdout);
         }
     }.bind(this));
-});
+};

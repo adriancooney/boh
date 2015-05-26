@@ -1,7 +1,6 @@
-var boh = require("../boh"),
-    path = require("path");
+var path = require("path");
 
-module.exports = new boh.Plugin(function run(rule, index, callback) {
+module.exports = [function run(rule, index, callback) {
     if(typeof rule.content === "string")
         rule.content = rule.content.split(",").map(function(s) { return s.trim(); })
 
@@ -11,4 +10,4 @@ module.exports = new boh.Plugin(function run(rule, index, callback) {
         }));
     
     callback();
-}, { phase: "indexing" });
+}, { phase: "indexing" }];

@@ -1,4 +1,5 @@
-var EventEmitter = require("events").EventEmitter;
+var boh = require("./boh"),
+    EventEmitter = require("events").EventEmitter;
 
 /**
  * Create a new plugin.
@@ -16,13 +17,14 @@ var Plugin = function(runner, options) {
 
 // Inherit from the EventEmitter
 Plugin.prototype = Object.create(EventEmitter.prototype);
+Plugin.prototype.execute = boh.execute;
 
 /**
  * Execute the plugin.
  * @param  {Object}   rule     Rule sent with { file, content }
  * @param  {Function} callback 
  */
-Plugin.prototype.execute = function(rule, index, callback) {
+Plugin.prototype.run = function(rule, index, callback) {
     // Tell the outside world the plugin is starting
     this.emit("start", rule);
 

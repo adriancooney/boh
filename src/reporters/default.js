@@ -1,5 +1,8 @@
 var path = require("path");
 
+/*
+ * The default boh reporter.
+ */
 module.exports = function(logger, builder, verbose, watching, directory) {
     var errors = [], TAB = "    ", rules = [];
 

@@ -69,7 +69,7 @@ Builder.prototype.buildRules = function(index, rules, callback) {
 
         debug("Running".bold + " %s:%s.", relative.yellow, rule.name.cyan);
 
-        plugin.execute(rule, index, function(err, built) {
+        plugin.run(rule, index, function(err, built) {
 
             // Remove any listeners
             plugin.removeAllListeners();
