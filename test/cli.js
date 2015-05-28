@@ -28,7 +28,7 @@ describe("CLI", function () {
             it("should handle adding a new file to the index", function(done) {
                 async.waterfall([
                     fs.writeFile.bind(fs, newFile, [
-                        "/*!boh",
+                        "/*boh",
                         "  build: woo!",
                         " */"
                     ].join("\n")),
@@ -51,7 +51,7 @@ describe("CLI", function () {
             it("should update rules on file change and run the build rules", function(done) {
                 async.waterfall([
                     fs.writeFile.bind(fs, newFile, [
-                        "/*!boh",
+                        "/*boh",
                         " build: woot",
                         " */"
                     ].join("\n")),

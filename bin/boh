@@ -24,9 +24,9 @@ var reporter = require("../src/reporters/default");
 program
     .version(config.version)
     .option("--watch", "Watch for changes.")
-    .option("--index", "Print the boh index of a directory.", false)
-    .option("--ignore [paths]", "Paths to ignore in the index (glob).")
-    .option("-v, --verbose", "Log all boh output to the screen.")
+    .option("--index", "Print the boh index and exit.", false)
+    .option("--ignore [paths]", "Specify paths to ignore in the index (globs).")
+    .option("-v, --verbose", "Log all boh output to stdout.")
     .arguments("<dir>")
     .action(function(dir) {
         program.__executed = true;
@@ -44,9 +44,9 @@ program.outputHelp = function() {
         "     -h, --help        ".magenta + "Output usage information",
         "     -V, --version     ".magenta + "Output the version number",
         "     --watch           ".magenta + "Watch for changes.",
-        "     --index           ".magenta + "Print the boh index of a directory.",
-        "     --ignore [paths]  ".magenta + "Paths to ignore in the index (glob).",
-        "     -v, --verbose     ".magenta + "Log all boh output to the screen.",
+        "     --index           ".magenta + "Print the boh index and exit.",
+        "     --ignore [paths]  ".magenta + "Specify paths to ignore in the index (globs).",
+        "     -v, --verbose     ".magenta + "Log all boh output to stdout.",
         ""
     ].join("\n"))
 };
@@ -94,7 +94,7 @@ function run(dir, callback) {
         // Output the directory
         function(stat, callback) {
             var cwd = path.relative(process.cwd(), dir);
-            logRaw("Running " + BOH + " in " + (!cwd ? "the current directory" : cwd).magenta);
+            logRaw("Running " + BOH + " in " + (!cwd ? "the current directory" : cwd + "/").magenta);
             callback();
         },
 
@@ -287,7 +287,7 @@ function fail() {
  */
 function buildReporter(verbose, watching, dir) {
     // Create the build reporter
-    var builder = new boh.Builder()
+    var builder = new boh.Builder();
 
     // Create the reporter
     reporter.call(null, {

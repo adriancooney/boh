@@ -21,6 +21,7 @@ Plugin.prototype.execute = boh.execute;
 
 /**
  * Execute the plugin.
+ * @private
  * @param  {Object}   rule     Rule sent with { file, content }
  * @param  {Function} callback 
  */

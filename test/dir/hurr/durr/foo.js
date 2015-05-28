@@ -1,3 +1,3 @@
-/*!boh
+/*boh
  * build: echo "Hello world!"
  */

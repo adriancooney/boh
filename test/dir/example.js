@@ -1,4 +1,4 @@
-/*!boh
+/*boh
  * build: |
  *   browserify --input $this --output ../lul
  *   echo "Hello world!"

@@ -1,2 +1,2 @@
-//!boh build: say boh
+//boh build: say boh
 // foo: bar

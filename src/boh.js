@@ -15,7 +15,7 @@ var boh = {};
  * Identifier for boh to act on at the start of a header comment block.
  * @type {String}
  */
-const BOH_IDENTIFIER = "!boh";
+const BOH_IDENTIFIER = "boh";
 
 /**
  * Boh plugin prefix.

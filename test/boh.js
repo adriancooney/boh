@@ -33,7 +33,7 @@ describe("boh", function () {
         it("should not extract the contents without the comment being at the start of the stream", function(done) {
             boh.extractHeaderFromStream(streamWithContent([
                 "Foo bar",
-                "//!boh Hello world!"
+                "//boh Hello world!"
             ].join("\n")), function(err, contents) {
                 assert.equal(contents, "");
                 done();
@@ -42,7 +42,7 @@ describe("boh", function () {
 
         it("should extract the contents of a comment spanning multiple lines (non multiline comment)", function(done) {
             boh.extractHeaderFromStream(streamWithContent([
-                "//!bohfoo",
+                "//bohfoo",
                 "// Hello world",
                 "//",
                 "// Batman, you suck!",
@@ -62,7 +62,7 @@ describe("boh", function () {
 
         it("should extract the contents of a multiline comment", function(done) {
             boh.extractHeaderFromStream(streamWithContent([
-                "/*!boh",
+                "/*boh",
                 "Hello world",
                 "",
                 "Batman, you suck!",
@@ -82,7 +82,7 @@ describe("boh", function () {
         });
 
         it("should extract the contents of a single line comment with opening and closing tags", function(done) {
-            boh.extractHeaderFromStream(streamWithContent("/*!boh Hello world! */"), function(err, contents) {
+            boh.extractHeaderFromStream(streamWithContent("/*boh Hello world! */"), function(err, contents) {
                 assert.equal(" Hello world! ", contents);
                 done();
             });
@@ -90,7 +90,7 @@ describe("boh", function () {
 
         it("should maintain context over multiple chunks", function(done) {
             boh.extractHeaderFromStream(streamWithContent([[
-                "//!boh",
+                "//boh",
                 "// Hello world!",
                 "//"
             ].join("\n"), " Hello world again!"]), function(err, contents) {

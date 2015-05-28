@@ -58,7 +58,7 @@ Index.prototype.addFile = function(entry, callback) {
                             // Remove any listeners
                             plugin.removeAllListeners();
                             
-                            // I think it's fucking ridiculous async doesn't allow
+                            // I think it's absolutely ridiculous async doesn't allow
                             // passing errors in it's filter function. It's to keep
                             // it in line with fs.exists API callback style of truthy
                             // value as the first parameter. First of all, fs.exists
@@ -127,7 +127,7 @@ Index.prototype.linkRelative = function(owner, pathname) {
  * if I `index.link("src/**", "a/b.js")`, `src/a.js`, `src/b/c.js`
  * and `src/foo.css` should all link to `a/b.js`.
  * @param  {String} pathname The pathname.
- * @return {Array}          
+ * @return {Array} Array of links to the path.
  */
 Index.prototype.findLinks = function(pathname) {
     if(Object.keys(this.links).some(function(link) {
@@ -159,7 +159,7 @@ Index.prototype.ignore = function(pathspec) {
 
 /**
  * Remove any data from the index that is ignored.
- * @param  {String} pathspec 
+ * @param  {String} pathspec The path to purge.
  */
 Index.prototype.purge = function() {
     // Remove the file from the index if they match
@@ -253,7 +253,7 @@ Index.prototype.toString = function(fullPath) {
  * 
  * @param  {String} owner /path/to/file
  * @param {String} file /path/to/another/file
- * @return {String}     
+ * @return {String}     Filepath relative to the root.
  */
 Index.prototype.relative = function(owner, file) {
     if(!file) return path.relative(this.root, owner);
