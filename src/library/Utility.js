@@ -1,8 +1,5 @@
 var Utility = {
     type: function(text, duration, iterator, callback) {
-
-        console.log(text, duration, iterator, callback);
-
         if(typeof duration === "function") callback = iterator, iterator = duration, duration = 1500;
 
         var interval = Math.floor(duration/text.length);

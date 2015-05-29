@@ -1,4 +1,4 @@
-/*!boh 
+/*boh 
  * build: sass --sourcemap=none $this:../build/style.css 
  * ignore: ../build/style.css
  * link: reset.scss
@@ -8,6 +8,8 @@
    License: none (public domain)
     
 */
+@import url(http://fonts.googleapis.com/css?family=Nova+Mono);
+@import url(http://fonts.googleapis.com/css?family=Fira+Mono);
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -66,12 +68,27 @@ body {
   display: flex; }
   .grid .cell {
     flex: 1; }
+    .grid .cell.left {
+      padding-right: 18px; }
+    .grid .cell.right {
+      padding-left: 18px; }
+  .grid.vertical {
+    flex-direction: column; }
 
 header {
   text-align: center;
   height: 260px; }
+  header > .container {
+    position: relative; }
+  header .social {
+    position: absolute;
+    right: 0;
+    margin: 12px; }
+    header .social iframe {
+      display: inline-block;
+      margin-left: 12px; }
   header h1 {
-    font-family: "Nova Mono";
+    font-family: "Nova Mono", sans-serif;
     font-size: 12em;
     color: #333333;
     height: 190px; }
@@ -106,6 +123,10 @@ pre {
     color: purple; }
     pre .keyword a {
       border-color: purple; }
+  pre .prop {
+    color: #596e83; }
+    pre .prop a {
+      border-color: #596e83; }
   pre .string {
     color: blue; }
     pre .string a {
@@ -147,6 +168,8 @@ code {
         background: #eee;
         border-radius: 6px;
         padding: 0 3px; }
+        .demo .filesystem .directory > h3:first-child span.highlighted {
+          border-color: #0d54a7; }
       .demo .filesystem .directory > h3:first-child:before {
         content: '';
         position: absolute;
@@ -162,7 +185,8 @@ code {
       .demo .filesystem .file-list h3 {
         display: inline-block; }
         .demo .filesystem .file-list h3 span {
-          margin-left: 8px; }
+          margin-left: 8px;
+          padding: 2px 4px; }
           .demo .filesystem .file-list h3 span a {
             color: inherit; }
             .demo .filesystem .file-list h3 span a:hover {
@@ -178,7 +202,54 @@ code {
       .demo .filesystem .leaf .file-list .file:first-child span {
         margin-left: 0; }
     .demo .filesystem .highlighted {
-      background: #f00 !important; }
+      background: #116CD6 !important;
+      color: #fff !important;
+      box-shadow: 0 1px 4px 0px rgba(0, 0, 0, 0.1); }
+  .demo .speaker p {
+    text-align: center;
+    height: 30px;
+    opacity: 1;
+    transition: all 300ms; }
+    .demo .speaker p.fade-out {
+      transform: translate(0, -40px);
+      opacity: 0; }
+    .demo .speaker p.fade-in {
+      transform: translate(0, 40px);
+      opacity: 0; }
+
+.content .cell {
+  padding: 12px 0; }
+.content section {
+  margin: 40px 0; }
+.content h2 {
+  font-size: 1.7em;
+  font-weight: bold;
+  margin: 12px 0; }
+.content h3 {
+  font-size: 32px;
+  text-transform: uppercase;
+  font-weight: bold;
+  padding-bottom: 12px; }
+.content h4 {
+  font-family: "Fira Mono";
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #00A;
+  margin: 18px 0; }
+  .content h4 span {
+    font-style: italic;
+    font-size: 15px;
+    color: rgba(0, 0, 0, 0.6); }
+.content h5 {
+  font-size: 17px;
+  font-weight: bold;
+  margin: 30px 0 12px; }
+.content p {
+  line-height: 180%; }
+.content i {
+  font-style: italic; }
+.content pre {
+  font-size: 15px; }
 
 .terminal {
   height: 100%;
@@ -194,6 +265,8 @@ code {
   .terminal .input {
     display: inline-block;
     margin-bottom: 5px; }
+  .terminal pre {
+    font-size: 13px; }
   .terminal .blue {
     color: #8FA1B3; }
   .terminal .yellow {
@@ -217,12 +290,15 @@ code {
     padding: 4px; }
     .fileviewer .header h5 {
       text-align: center;
-      font-size: 0.8em; }
+      font-size: 0.8em;
+      margin: 0; }
     .fileviewer .header span {
       position: absolute;
       font-size: 1.6em;
       display: inline-block;
       margin-top: -6px; }
+      .fileviewer .header span i {
+        font-style: normal; }
       .fileviewer .header span i:nth-child(1) {
         color: red; }
       .fileviewer .header span i:nth-child(2) {
@@ -243,21 +319,88 @@ code {
     padding: 6px;
     font-size: 0.75em;
     line-height: 140%; }
+    .fileviewer pre span {
+      transition: all 300ms; }
+    .fileviewer pre .highlighted {
+      background-color: #116CD6;
+      color: #fff;
+      outline: 2px solid #116CD6;
+      box-shadow: 0 3px 4px 0 rgba(0, 0, 0, 0.3); }
 
-.content .cell {
-  padding: 12px; }
-.content section {
-  margin: 40px 0; }
-.content h2 {
-  font-size: 1.7em;
-  font-weight: bold;
-  margin: 12px 0; }
-.content h3 {
-  font-size: 32px;
-  text-transform: uppercase;
-  font-weight: bold; }
-.content p {
-  line-height: 180%; }
+.rule p {
+  padding-right: 18px;
+  text-align: justify; }
+.rule .example {
+  margin-top: 20px;
+  padding-left: 12px;
+  color: #777;
+  align-self: center; }
 
 .synopsis p {
   line-height: 150%; }
+
+#other-features p, #credits p {
+  text-align: justify; }
+#other-features .left, #credits .left {
+  padding-right: 30px; }
+#other-features .right, #credits .right {
+  padding-left: 30px; }
+
+#usage h3 {
+  margin-bottom: 16px; }
+
+#documentation .comments pre {
+  color: #4eb26f; }
+#documentation .variables {
+  margin-top: 18px; }
+  #documentation .variables tr td:first-child {
+    color: #00A;
+    font-family: "Fira Mono"; }
+  #documentation .variables tr td {
+    padding: 8px; }
+
+#plugin-api p {
+  margin-bottom: 12px; }
+#plugin-api .docs p span {
+  color: #00A;
+  font-family: "Fira Mono";
+  font-size: 90%; }
+  #plugin-api .docs p span i {
+    color: rgba(0, 0, 0, 0.7);
+    font-size: 90%;
+    display: inline-block;
+    padding-left: 4px; }
+  #plugin-api .docs p span strong {
+    font-style: italic; }
+
+[data-tooltip]:before {
+  display: none;
+  right: 0;
+  left: 0;
+  margin-top: 2px;
+  padding: 6px;
+  color: #fff;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.8);
+  position: absolute;
+  content: attr(data-tooltip);
+  min-width: 240px; }
+[data-tooltip]:after {
+  content: '';
+  display: none;
+  width: 0;
+  height: 0;
+  left: 0;
+  right: 0;
+  margin-top: 14px;
+  margin-left: 12px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  position: absolute;
+  border-bottom: 5px solid rgba(0, 0, 0, 0.8); }
+[data-tooltip]:hover {
+  position: relative; }
+  [data-tooltip]:hover:before {
+    display: block; }
+  [data-tooltip]:hover:after {
+    display: inherit; }

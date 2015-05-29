@@ -7,6 +7,11 @@
 <body>
 <header>
     <div class="container">
+        <div class="social">
+            <a class="github-button" href="https://github.com/adriancooney/boh" data-icon="octicon-star" data-count-href="/adriancooney/boh/stargazers" data-count-api="/repos/adriancooney/boh#stargazers_count" data-count-aria-label="# stargazers on GitHub" aria-label="Star adriancooney/boh on GitHub">Star</a>
+            <a href="https://twitter.com/share" class="twitter-share-button" data-text="boh - The simple, smart build tool" data-via="adrian_cooney">Tweet</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
         <h1>boh</h1>
         <h3>The smart, simple build tool.</h3>
     </div>
@@ -27,35 +32,38 @@ Build complete <span class="green">successfully</span>.</pre>
             </div>
             </noscript>
         </div>
-        <div class="cell filesystem-slot">
-            <noscript>
-            <div class="filesystem">
-                <div class="item directory">
-                    <h3><span>project/</span></h3>
-                    <div class="item directory leaf">
-                        <h3><span>build/</span></h3>
-                        <div class="file-list">
-                            <h3 class="file"><span><a href="#">bundle.js</a></span></h3><h3 class="file"><span><a href="#">bundle.css</a></span></h3>
+        <div class="cell grid vertical">
+            <div class="filesystem-slot cell">
+                <noscript>
+                <div class="filesystem">
+                    <div class="item directory">
+                        <h3><span>project/</span></h3>
+                        <div class="item directory leaf">
+                            <h3><span>build/</span></h3>
+                            <div class="file-list">
+                                <h3 class="file"><span><a href="#">bundle.js</a></span></h3><h3 class="file"><span><a href="#">bundle.css</a></span></h3>
+                            </div>
                         </div>
-                    </div>
-                    <div class="item directory leaf">
-                        <h3><span>src/</span></h3>
-                        <div class="file-list">
-                            <h3 class="file"><span><a href="#">index.js</a></span></h3><h3 class="file"><span><a href="#">User.js</a></span></h3>
+                        <div class="item directory leaf">
+                            <h3><span>src/</span></h3>
+                            <div class="file-list">
+                                <h3 class="file"><span><a href="#">index.js</a></span></h3><h3 class="file"><span><a href="#">User.js</a></span></h3>
+                            </div>
                         </div>
-                    </div>
-                    <div class="item directory leaf">
-                        <h3><span>style/</span></h3>
-                        <div class="file-list">
-                            <h3 class="file"><span><a href="#">style.scss</a></span></h3>
+                        <div class="item directory leaf">
+                            <h3><span>style/</span></h3>
+                            <div class="file-list">
+                                <h3 class="file"><span><a href="#">style.scss</a></span></h3>
+                            </div>
                         </div>
-                    </div>
-                    <div class="file-list">
-                        <h3 class="file"><span><a href="#">index.html</a></span></h3>
+                        <div class="file-list">
+                            <h3 class="file"><span><a href="#">index.html</a></span></h3>
+                        </div>
                     </div>
                 </div>
-            </div>
             </noscript>
+            </div>
+            <div class="speaker-slot"></div>
         </div>
         <div class="cell fileviewer-slot">
             <noscript>
@@ -70,33 +78,33 @@ Build complete <span class="green">successfully</span>.</pre>
 </div>
 <div class="container content">
     <section class="synopsis grid">
-        <div class="cell">
+        <div class="cell left">
             <h2>What is boh?</h2>
             <p>boh is a simple, smart command line build tool with plugins and <i class="r">c</i><i class="r">o</i><i class="r">l</i><i class="r">o</i><i class="r">r</i><i class="r">s</i>. It's designed for fast, painless prototyping and built with simplicity in mind.</p>
         </div>
         <div class="cell">
             <h2>Installation</h2>
-            <p>Install boh via <a href="http://npmjs.org"></a>.</p>
+            <p>Install boh via <a href="http://npmjs.org">npm</a>.</p>
             <code class="block">npm install -g boh</code>
         </div>
-        <div class="cell">
+        <div class="cell right">
             <h2>Usage</h2>
-            <p>Using boh is a simple as running <code>boh</code> in the directory of your project. boh will find the rules needed to build your project by itself.</p>
+            <p>Using boh is a simple as running <code>boh</code> in the directory of your project. boh will find the rules needed to build your project by itself, quickly and efficiently.</p>
         </div>
     </section>
-    <section class="grid">
-        <div class="cell">
+    <section class="grid" id="build-rules">
+        <div class="cell left">
             <h3>Build Rules</h3>
-            <p>One of boh's nicest features is the ability to define build rules directly in your files. boh rules are simply YAML at the top of a file in a comment (denoted with <code>!boh</code>). With a set of core rules: <code>build</code>, <code>link</code> and <code>ignore</code>, boh is a powerful system that allows you to interface with the command line tools you know. Every rule thereafter is a plugin that boh will <i>automatically</i> require after an npm install, globally and locally.</p>
+            <p>One of boh's core features is the ability to define build rules directly in your files. boh rules are simply YAML at the top of a file in a comment (denoted with <code>boh</code>). With a set of packaged rule plugins: <code>build</code>, <code>link</code> and <code>ignore</code>, boh is a powerful system that allows you to interface with the command line tools you know and love. Every rule thereafter is a plugin that boh will <i>automatically</i> require after an npm install, globally or locally.</p>
         </div>
         <div class="cell">
             <div class="fileviewer">
                 <div class="header"><span><i>&bull;</i><i>&bull;</i><i>&bull;</i></span><h5>style.scss</h5></div>
                 <div class="file-contents">
-                    <pre><span class="comment">/*<a href="#boh-identifier">!boh</a>
- * <a href="#build-rule">build: sass $this:../build/output.css</a>
- * <a href="#build-rule">ignore: ../build/output.css</a>
- * <a href="#build-rule">link: ./**/*.scss</a>
+                    <pre><span class="comment">/*<a data-tooltip="This is the boh identifier. boh won't work on this file unless it finds this token." href="#boh-identifier">boh</a>
+ * <a data-tooltip="This is a boh 'build' rule. Everything here will be executed in the shell. boh rules are simple YAML." href="#build-rule">build: sass $this:../build/output.css</a>
+ * <a data-tooltip="This is a boh 'ignore' rule. Any files declared here will be ignored by boh." href="#build-rule">ignore: ../build/output.css</a>
+ * <a data-tooltip="This 'link' rule links changes in the declared path to this file." href="#build-rule">link: ./**/*.scss</a>
  */</span>
 <span class="keyword">import</span> <span class="string">'login.scss';</span>
 <span class="keyword">import</span> <span class="string">'header.scss';</span>
@@ -111,9 +119,9 @@ Build complete <span class="green">successfully</span>.</pre>
         </div>
     </section>
 
-    <section class="grid">
+    <section class="grid" id="watch">
         <div class="cell">
-            <div class="terminal"><pre><span class="input"><span class="green">$</span> boh</span>
+            <div class="terminal"><pre><span class="input"><span class="green">$</span> boh</span> --watch
 Running <span class="bg-black blue">boh</span> in the <span class="magenta">current directory</span>.
 
     <span class="yellow">assets/style/style.scss</span>:<span class="blue">build</span> <span class="green">&#10004; (492ms)</span>
@@ -125,9 +133,187 @@ Build complete <span class="green">successfully</span>.
 <span class="bg-black blue">boh</span> is watching for changes in the <span class="magenta">current directory</span>..</pre>
             </div>
         </div>
-        <div class="cell"></div>
+        <div class="cell right">
+            <h3>Watch</h3>
+            <p>boh has the ability to watch for file changes built-in. When invoked with <code>--watch</code>, boh will listen for filesystem events and act on changes, discovering new rules and executing everything a normal <code>boh</code> run would. It does it <i>efficiently</i> too, boh will only execute rules based on the files that changed and not the full monty everytime.</p>
+        </div>
+    </section>
+
+    <section class="grid" id="plugins">
+        <div class="cell left">
+            <h3>Plugins</h3>
+            <p>boh has a <a href="#plugin-api">tiny plugin API</a> that allow developers to define their own build rules. Plugins will be automatically required at runtime, globally and locally. All you need to do is install the plugin via npm (<code>npm install --save-dev boh-<i>&lt;plugin-name&gt;</i></code>) and use it as a rule (the plugin's name corresponds to the rule name without the <i>boh-</i> prefix).</p>
+        </div>
+        <div class="cell">
+            <div class="terminal"><pre><span class="input"><span class="green">$</span> npm install --save-dev boh-uglify</span>
+boh-uglify@0.9.2 node_modules/uglify
+|-- uglify-js@1.0.1
+
+<span class="input"><span class="green">$</span> boh site/</span>
+Running <span class="bg-black blue">boh</span> in the <span class="magenta">site/</span> with plugins: <span class="blue">boh-uglify &#10004;</span>.
+
+    <span class="yellow">src/index.js</span>:<span class="blue">uglify</span> <span class="green">&#10004; (567ms)</span>
+
+Build complete <span class="green">successfully</span>.</pre>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid" id="other-features">
+        <div class="cell left">
+            <h2>YAML</h2>
+            <p>boh rules are declared in the friendly <a href="http://yaml.org">YAML</a> syntax. This allows for concise, <i>extensible</i> rule declaration right from the top of your files.</p>
+        </div>
+        <div class="cell">
+            <h2>Multilingual</h2>
+            <p>boh doesn't care what language you use. As long as the comment syntax of that language is supported (most are), boh will understand and build it.</p>
+        </div>
+        <div class="cell right">
+            <h2>Tiny</h2>
+            <p>boh only needs to be installed once, globally and has just six dependencies so you don't have to download the internet every time you want to build something.</p>
+        </div>
+    </section>
+
+    <section id="documentation">
+        <h3>Writing build rules</h3>
+        <p>boh rules are placed at the <i>very</i> top of the file in a comment with the <code>boh</code> token immediately after opening the comment. boh uses this convention for quick parsing of your files and to avoid hidden build rules deep in the source. boh supports most of the common comment syntax from the likes of Javascript or Java (<code>//</code> or <code>/* */</code>), Ruby (<code>#</code>) and HTML/XML (<code>&lt;-- --&gt;</code>). For an example, <a href="#">see the rules for this site!</a></p>
+        <div class="grid comments">
+            <div class="cell">
+                <h5>Multi-line block style</h5>
+                <pre>
+/*boh
+ * build: |
+ *   echo "Building SASS.."
+ *   sass $this:./bundle.css
+ */</pre>
+                </div>
+            <div class="cell">
+                <h5>Single Line Comment</h5>
+                <pre>
+#boh
+# build:
+#   - rm -r cache/ &amp;&amp; mkdir cache
+#   - make build
+#   - ./program</pre>
+                </div>
+            <div class="cell">
+                <h5>Inline Rule</h5>
+                <pre>&lt;--boh build: mv $this ../public --&gt;</pre>
+                <p style="text-align: center; margin: 18px;">or</p>
+                <pre>//boh build: g++ $this -o program</pre>
+            </div>
+        </div>
+        <h5>Rule variables</h5>
+        <p>boh has a helpful variable system that allows you reference the current enviornment in your rules. These variables start with a dollar (<code>$</code>) sign and can be escaped with a backslash (<code>\</code>) e.g. <code>\$this</code>.</p>
+        <table class="variables">
+            <tr><td>$this</td><td>The path to the current file.</td></tr>
+            <tr><td>$dir</td><td>The path to the directory of the current file.</td></tr>
+        </table>
+        <h5>Packaged Plugins</h5>
+        <p>boh has three packaged plugins called <span class="rule">build</span>, <span class="rule">link</span> and <span class="rule">ignore</span>. These rules provide a robust build interface out of the box which gives you access to all your existing command line tools and the ability to manipulate the boh index to your liking. Rules are executed from the top down.</p>
+        <div class="rule grid">
+            <div class="cell">
+                <h4>build <span>{String|Array}</span></h4>
+                <p>The <code>build</code> rule is one of boh's core rules. It accepts an array of commands ora  multiline block string. The commands are run in sequence with the <i>cwd</i> being the file's directory.</p>
+            </div>
+            <div class="cell grid">
+                <pre class="example">/*boh
+ * build:
+ *   - browserify -e $this -o ../bundle.js
+ *   - uglifyjs ../bundle.js -o ../bundle.min.js 
+ */</pre>
+            </div>
+        </div>
+        <div class="rule grid">
+            <div class="cell">
+                <h4>link <span>{String|Array}</span></h4>
+                <p>The <code>link</code> rule <i>links</i> a file or directory with the current file so if boh tries to build anything in the linked directory or file, it will use the build rules from the current file. It's useful with the <code>--watch</code> flag so it knows what rules to run when a file changes.</p>
+            </div>
+            <div class="cell">
+                <pre class="example">/*boh
+ * build: browserify -e $this -o ../bundle.js
+ * link: ./**/*.js
+ */</pre>
+            </div>
+        </div>
+        <div class="rule grid">
+            <div class="cell">
+                <h4>ignore <span>{String|Array}</span></h4>
+                <p>The <code>ignore</code> rule completely ignores the paths specified from the boh index. Any rules in those files will be disregarded and will not be executed by <code>boh</code>. Useful for when an outputted transformed file still has rules in it.</p>
+            </div>
+            <div class="cell">
+                <pre class="example">/*boh
+ * build: browserify -e $this -o ../bundle.js
+ * ignore: ../bundle.js
+ */</pre>
+            </div>
+        </div>
+    </section>
+
+    <section id="usage">
+    <h3>Usage</h3>
+    <pre>$ boh --help
+
+   boh [options] &lt;dir&gt;
+
+     -h, --help        Output usage information
+     -V, --version     Output the version number
+     --watch           Watch for changes.
+     --index           Print the boh index and exit.
+     --ignore [paths]  Specify paths to ignore in the index (globs).
+     -v, --verbose     Log all boh output to stdout.</pre>
+    </section>
+
+    <section id="plugin-api">
+        <h3>Plugin Development</h3>
+        <p>boh's is built on Node.js so all of it's plugins are written in Javascript. The plugin API is minimal by design. You are given the contents of your rule, the boh index and a callback. With these, users can pass your plugins parameters to configure and it's up to you to do the rest. To see some existing plugins, take a look at the <a href="https://github.com/adriancooney/boh/tree/master/src/plugins">packaged plugins' source</a>.
+
+        <h5>Creating new plugins</h5>
+        <p>The most important aspect of a plugin is it's name. The name of the plugin is how the user calls the from their file's header, it is the name of the rule. Plugins should be pubished on npm via with the prefix <code><i>boh-</i></code>. This will allow them to be automatically required and accessible when boh runs. Plugins can be installed locally or globally. Local plugins will only be discovered in the local <i>node_modules</i> much like how Node's <code>require</code> works (it will traverse up the directory tree, looking in the <i>package.json</i> files). Global plugins will only be required if <code>NODE_PATH</code> exists and points to npm's global <i>node_modules</i> directory. To create a new plugin, export a function that takes three parameters <code>rule</code>, <code>index</code> and <code>callback</code>:</p>
+        <div class="grid">
+            <div class="cell">
+                <h5>Example: <code>boh-jsfmt</code></h5>
+                <pre>
+<span class="keyword">var</span> jsfmt = require(<span class="string">'jsfmt'</span>), fs = require(<spna class="string">'fs'</spna>);
+
+<span class="keyword">module.</span><span class="prop">exports</span> = <span class="keyword">function</span>(rule, index, callback) {
+    fs.readFile(rule.file, <span class="keyword">function</span>(err, contents) {
+        <span class="keyword">if</span>(err) <span class="keyword">return</span> callback(err);
+
+        <span class="keyword">var</span> config = jsfmt.getConfig();
+        contents = jsfmt.format(contents, config);
+
+        <span class="comment">// Write to file, in place</span>
+        fs.writeFile(rule.file, contents, callback);
+    });
+}</pre>
+            </div>
+            <div class="cell docs">
+                <h5>Parameters</h5>
+                <p><span>this<i>{boh.Plugin}</i></span> - <a href="https://github.com/adriancooney/boh/blob/master/README.md#plugins">See here for plugin methods.</a></p>
+                <p><span>rule<i>{Object}</i></span> - The currently executing rule. It has two properties: <span>file<i>{String}</i></span>, the path to the file that the rule is found in and <span>content<i>{Object}</i></span>, the parsed YAML content of the rule.</p>
+                <p><span>index<i>{boh.Index}</i></span> - The built boh index. <a href="https://github.com/adriancooney/boh/blob/master/src/Index.js">Check out the source</a> for a comphrensive, documented list of methods.</p>
+                <p><span>callback(<strong>err</strong>, <strong>data</strong>)<i>{Function}</i></span> - The callback to be called when the plugin has finished with an <i>err</i> or <i>data</i> as parameters (both just pushed into the output and passed to the reporter).</p>
+            </div>
+    </section>
+    <section id="credits">
+        <div class="grid">
+            <div class="cell left">
+                <h2>Credits</h2>
+                <p><a href="http://twitter.com/adrian_cooney">@adrian_cooney</a> created boh. It was sparked out of the frustration at the amount of work and bandwidth involved in building a simple project.</p>
+            </div>
+            <div class="cell">
+                <h2>Contributing</h2>
+                <p>boh is <a href="http://github.com/adriancooney/boh">hosted on Github</a> and built on Node.js. There are no strict guidelines to abide by, just fork and hack away. It's licensed under the MIT License.</p>
+            </div>
+            <div class="cell right">
+                <h2>Issues</h2>
+                <p>Found an issue with boh? Great! Report your enviornment, a quick description of the problem and how to reproduce it on <a href="http://github.com/adriancooney/boh/issues">Github Issues</a>.</p>
+            </div>
+        </div>
     </section>
 </div>
 </body>
 <script src="assets/build/index.js" type="text/javascript"></script>
+<script async defer id="github-bjs" src="https://buttons.github.io/buttons.js"></script>
 </html>

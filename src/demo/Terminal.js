@@ -15,8 +15,10 @@ Terminal.prototype.getElement = function() {
     return this.element;
 };
 
-Terminal.prototype.append = function(string) {
+Terminal.prototype.append = function(string, callback) {
     this.pre.innerHTML = this.pre.innerHTML + string;
+    this.scrollToBottom();
+    if(callback) callback();
 };
 
 Terminal.prototype.log = function(string, callback) {
@@ -41,11 +43,14 @@ Terminal.prototype.typeCommand = function(string, duration, callback) {
     Utility.type(string + "\n", duration, function(text, callback) {
         span.innerHTML = dollah + text;
         callback();
-    }, callback);
+    }, function() {
+        this.scrollToBottom();
+        setTimeout(callback, 300);
+    }.bind(this));
 };
 
 Terminal.prototype.scrollToBottom = function() {
-
+    this.element.scrollTop = this.element.scrollHeight;
 };
 
 module.exports = Terminal;

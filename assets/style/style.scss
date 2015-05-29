@@ -1,19 +1,19 @@
-/*!boh 
+/*boh 
  * build: sass --sourcemap=none $this:../build/style.css 
  * ignore: ../build/style.css
  * link: reset.scss
  */
 @import 'reset.scss';
-// @import url(http://fonts.googleapis.com/css?family=Nova+Mono);
-// @import url(http://fonts.googleapis.com/css?family=Fira+Mono);
+@import url(http://fonts.googleapis.com/css?family=Nova+Mono);
+@import url(http://fonts.googleapis.com/css?family=Fira+Mono);
 
 
 $oil: #333333;
 $sunset-orange: #F84E3D;
 
 // Fonts
-$font-header: "Nova Mono";
-$font-title: "Share Tech Mono";
+$font-header: "Nova Mono", sans-serif;
+$font-title: "Share Tech Mono", sans-serif;
 $font-code: "Fira Mono";
 $font-readable: "Clear Sans";
 
@@ -34,12 +34,34 @@ body {
 .grid {
     display: flex;
 
-    .cell { flex: 1 }
+    .cell { 
+        flex: 1;
+
+        &.left { padding-right: 18px; }
+        &.right { padding-left: 18px; }
+    }
+
+    &.vertical {
+        flex-direction: column;
+    }
 }
 
 header {
     text-align: center;
     height: 260px;
+    
+    > .container { position: relative; }
+
+    .social {
+        position: absolute;
+        right: 0;
+        margin: 12px;
+
+        iframe {
+            display: inline-block;
+            margin-left: 12px;
+        }
+    }
 
     h1 {
         font-family: $font-header;
@@ -70,6 +92,7 @@ pre {
     $green: #71C18C;
     $purple: purple;
     $blue: blue;
+    $dark-blue: darken(#8FA1B3, 20%);
     $magenta: #B48EA7;
 
     a { 
@@ -84,6 +107,7 @@ pre {
 
     .comment { color: $green; a { border-color: lighten($green, 20%); } }
     .keyword { color: $purple; a { border-color: $purple; } }
+    .prop { color: $dark-blue; a { border-color: $dark-blue; } }
     .string { color: $blue; a { border-color: $blue; } }
     .number { color: $magenta; a { border-color: $magenta; } }
 }
@@ -129,6 +153,8 @@ code {
                 background: #eee;
                 border-radius: 6px;
                 padding: 0 3px;
+
+                &.highlighted { border-color: darken(#116CD6, 10%); }
             }
 
             &:before {
@@ -155,6 +181,7 @@ code {
 
                 span {
                     margin-left: 8px;
+                    padding: 2px 4px;
 
                     a {
                         color: inherit;
@@ -186,8 +213,84 @@ code {
         }
 
         .highlighted {
-            background: #f00 !important;
+            background: #116CD6 !important;
+            color: #fff !important;
+            box-shadow: 0 1px 4px 0px rgba(0,0,0,0.1);
         }
+    }
+
+    .speaker {
+        p {
+            text-align: center;
+            height: 30px;
+            opacity: 1;
+            transition: all 300ms;
+
+            &.fade-out {
+                transform: translate(0, -40px);
+                opacity: 0;
+            }
+
+            &.fade-in {
+                transform: translate(0, 40px);
+                opacity: 0;
+            }
+        }
+    }
+}
+
+.content {
+    .cell {
+        padding: 12px 0;
+    }
+
+    section {
+        margin: 40px 0;
+    }
+
+    h2 {
+        font-size: 1.7em;
+        font-weight: bold;
+        margin: 12px 0;
+    }
+
+    h3 {
+        font-size: 32px;
+        text-transform: uppercase;
+        font-weight: bold;
+        padding-bottom: 12px;
+    }
+
+    h4 {
+        font-family: $font-code;
+        font-size: 18px;
+        margin-bottom: 12px;
+        color: #00A;
+        margin: 18px 0;
+
+        span {
+            font-style: italic;
+            font-size: 15px;
+            color: rgba(0,0,0,0.6);
+        }
+    }
+
+    h5 {
+        font-size: 17px;
+        font-weight: bold;
+        margin: 30px 0 12px;
+    }
+
+    p {
+        line-height: 180%;
+    }
+
+    i {
+        font-style: italic;
+    }
+
+    pre {
+        font-size: 15px;
     }
 }
 
@@ -208,6 +311,10 @@ code {
         margin-bottom: 5px;
     }
 
+    pre {
+        font-size: 13px;
+    }
+    
     .blue { color: #8FA1B3; }
     .yellow { color: #EBCB8B; }
     .magenta { color: #B48EA7; }
@@ -229,6 +336,7 @@ code {
         h5 {
             text-align: center;
             font-size: 0.8em;
+            margin: 0;
         }
 
         span {
@@ -236,6 +344,8 @@ code {
             font-size: 1.6em;
             display: inline-block;
             margin-top: -6px;
+
+            i { font-style: normal; }
 
             i:nth-child(1) { color: red; }
             i:nth-child(2) { color: #F6C969; }
@@ -252,37 +362,136 @@ code {
         padding: 6px;
         font-size: 0.75em; 
         line-height: 140%;
+
+        span {
+            transition: all 300ms;
+        }
+
+        .highlighted {
+            background-color: #116CD6;
+            color: #fff;
+            outline: 2px solid #116CD6;
+            box-shadow: 0 3px 4px 0 rgba(0,0,0,0.3);
+        }
     }
 }
 
-.content {
-    .cell {
-        padding: 12px;
-    }
 
-    section {
-        margin: 40px 0;
-    }
-
-    h2 {
-        font-size: 1.7em;
-        font-weight: bold;
-        margin: 12px 0;
-    }
-
-    h3 {
-        font-size: 32px;
-        text-transform: uppercase;
-        font-weight: bold;
-    }
-
+.rule {
     p {
-        line-height: 180%;
+        padding-right: 18px;
+        text-align: justify;
+    }
+
+    .example {
+        margin-top: 20px;
+        padding-left: 12px;
+        color: #777;
+        align-self: center;
     }
 }
 
 .synopsis {
     p {
         line-height: 150%;
+    }
+}
+
+#other-features, #credits {
+    p {
+        text-align: justify;
+    }
+
+    .left { padding-right: 30px; }
+    .right { padding-left: 30px; }
+}
+
+#usage {
+    h3 { margin-bottom: 16px; }
+}
+
+#documentation {
+
+    .comments pre {
+        color: darken(#71C18C, 10%);
+    }
+
+    .variables {
+        margin-top: 18px;
+
+        tr {
+            td:first-child {
+                color: #00A;
+                font-family: $font-code;
+            }
+
+            td {
+                padding: 8px;
+            }
+        }
+    }
+}
+
+#plugin-api {
+    p { margin-bottom: 12px; } 
+
+    .docs {
+        p {
+
+            span {
+                color: #00A;
+                font-family: $font-code;
+                font-size: 90%;
+
+                i {
+                    color: rgba(0,0,0,0.7);
+                    font-size: 90%;
+                    display: inline-block;
+                    padding-left: 4px;
+                }
+
+                strong {
+                    font-style: italic;
+                }
+            }
+        }
+    }
+}
+
+[data-tooltip] {
+    &:before {
+        display: none;
+        right: 0;
+        left: 0;
+        margin-top: 2px;
+        padding: 6px;
+        color: #fff;
+        border-radius: 6px;
+        background: rgba(0,0,0,0.8);
+        position: absolute;
+        content: attr(data-tooltip);
+        min-width: 240px;
+    }
+
+    &:after {
+        content: '';
+        display: none;
+        width: 0; 
+        height: 0;
+        left: 0;
+        right: 0;
+        margin-top: 14px;
+        margin-left: 12px;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        position: absolute;
+        border-bottom: 5px solid rgba(0,0,0,0.8);
+    }
+
+    &:hover {
+        position: relative;
+
+        &:before { display: block; }
+        &:after { display: inherit; }
     }
 }

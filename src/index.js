@@ -1,34 +1,40 @@
-//!boh
-// build: browserify -e $this -o ../assets/build/index.js --debug
-// link: ./*/*.js
+//boh
+// build: browserify -e $this -o ../assets/build/index.js
+// link: ./*/*.js, ../demo.json
 // ignore: ../assets/build/index.js
 
 var FileViewer = require("./demo/FileViewer"),
     Filesystem = require("./demo/Filesystem"),
     Terminal = require("./demo/Terminal"),
+    Speaker = require("./demo/Speaker"),
     Utility = require("./library/Utility"),
     demo = require("../demo.json");
 
 var Demo = {
     init: function() {
-        var terminal = this.terminal = new Terminal();
-        var fileviewer = this.fileviewer = new FileViewer();
-        var filesystem = this.filesystem = new Filesystem(demo.filesystem.root, demo.filesystem.entries);
+        var dimo = {
+            terminal: new Terminal(),
+            fileviewer: new FileViewer(),
+            filesystem: new Filesystem(demo.filesystem.root, demo.filesystem.entries),
+            speaker: new Speaker(),
+            utility: Utility
+        };
+
+        dimo.speaker.onReplay = Demo.init.bind(Demo);
 
         // Append the elements into the document
-        ["fileviewer", "filesystem", "terminal"].forEach(function(item) {
-            document.querySelector("." + item + "-slot").appendChild(this[item].getElement());
-        }, this);
-
-        this.run(demo.demo, {
-            terminal: terminal,
-            fileviewer: fileviewer,
-            filesystem: filesystem,
-            utility: Utility
+        Object.keys(dimo).forEach(function(item) {
+            if(item === "utility") return;
+            var element = document.querySelector("." + item + "-slot");
+            element.innerHTML = "";
+            element.appendChild(dimo[item].getElement());
         });
+
+        this.run(demo.demo, dimo);
     },
 
     run: function(reel, functions, callback) {
+        reel = reel.slice();
         (function run(reel) {
             var item = reel.shift();
 
@@ -38,7 +44,6 @@ var Demo = {
                         fn = RegExp.$2;
 
                     if(functions[object] && functions[object][fn]) {
-                        console.log("%s:%s(%s)", object, fn, item.slice(1).join(", "));
                         functions[object][fn].apply(functions[object], item.slice(1).concat([run.bind(null, reel)]));
                     } else console.warn("%s:%s(%s) not found.", object, fn, item.slice(1).join(", "));
                 }

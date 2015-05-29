@@ -1,4 +1,5 @@
-var EventEmitter = require("events").EventEmitter;
+var EventEmitter = require("events").EventEmitter,
+    path = require("path");
 
 var Filesystem = function(root, files) {
     this.scaffold();
@@ -45,14 +46,39 @@ Filesystem.prototype.getElement = function() {
     return this.element;
 };
 
-Filesystem.prototype.getEntry = function(path) {
-    return this.index[path];
+Filesystem.prototype.createEntry = function(pathspec, entry, callback) {
+    var dir = this.getEntry(path.dirname(pathspec) + "/");
+
+    if(dir) {
+        dir.addChild(entry);
+        this.index[pathspec] = entry;
+    }
+
+    if(callback) callback();
+};
+
+Filesystem.prototype.createDirectory = function(pathspec, callback) {
+    this.createEntry(pathspec, new Filesystem.Directory(path.basename(pathspec)), callback);
+};
+
+Filesystem.prototype.createFile = function(pathspec, callback) {
+    this.createEntry(pathspec, new Filesystem.File(path.basename(pathspec)), callback);
+};
+
+Filesystem.prototype.getEntry = function(pathspec) {
+    return this.index[pathspec];
 };
 
 Filesystem.prototype.highlightEntry = function(entry, callback) {
     var entry = this.getEntry(entry);
 
     if(entry) entry.highlight(callback);
+};
+
+Filesystem.prototype.unhighlightEntry = function(entry, callback) {
+    var entry = this.getEntry(entry);
+
+    if(entry) entry.unhighlight(callback);
 };
 
 Filesystem.prototype.flashEntry = function(entry, duration, callback) {
