@@ -6,6 +6,7 @@
 @import 'reset.scss';
 @import url(http://fonts.googleapis.com/css?family=Nova+Mono);
 @import url(http://fonts.googleapis.com/css?family=Fira+Mono);
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:400,700);
 
 
 $oil: #333333;
@@ -15,7 +16,7 @@ $sunset-orange: #F84E3D;
 $font-header: "Nova Mono", sans-serif;
 $font-title: "Share Tech Mono", sans-serif;
 $font-code: "Fira Mono";
-$font-readable: "Clear Sans";
+$font-readable: "Open Sans";
 
 * {
     box-sizing: border-box;

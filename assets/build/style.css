@@ -10,6 +10,7 @@
 */
 @import url(http://fonts.googleapis.com/css?family=Nova+Mono);
 @import url(http://fonts.googleapis.com/css?family=Fira+Mono);
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:400,700);
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -58,7 +59,7 @@ table {
 
 body {
   background: #fefefe;
-  font-family: "Clear Sans"; }
+  font-family: "Open Sans"; }
 
 .container {
   width: 960px;
@@ -93,7 +94,7 @@ header {
     color: #333333;
     height: 190px; }
   header h3 {
-    font-family: "Clear Sans";
+    font-family: "Open Sans";
     font-size: 1.7em;
     font-weight: 100;
     color: #b3b3b3; }
