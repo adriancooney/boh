@@ -1,6 +1,6 @@
 {
   "name": "boh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The simple build system.",
   "main": "src/boh.js",
   "directories": {
